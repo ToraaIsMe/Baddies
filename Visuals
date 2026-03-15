@@ -1,0 +1,109 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Dupe Weapons • Baddies ",
+   LoadingTitle = "Tora Hub",
+   LoadingSubtitle = "by Tora",
+   ConfigurationSaving = {
+      Enabled = false
+   }
+})
+
+local player = game.Players.LocalPlayer
+
+
+local function checkHold(item)
+    local char = player.Character
+    if char then
+        local tool = char:FindFirstChildOfClass("Tool")
+
+        if tool and tool.Name == item then
+            Rayfield:Notify({
+                Title = "Dupe System",
+                Content = "Successful Dupe!",
+                Duration = 3
+            })
+        else
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "You must hold "..item.."!",
+                Duration = 3
+            })
+        end
+    end
+end
+
+local MainTab = Window:CreateTab("Main", 4483362458)
+local DupeTab = Window:CreateTab("Dupe", 4483362458)
+local TradeTab = Window:CreateTab("Freeze Trade", 4483362458)
+local SettingsTab = Window:CreateTab("Settings", 4483362458)
+local CreditsTab = Window:CreateTab("Credits", 4483362458)
+
+
+local items = {
+"Glitter Bomb",
+"Ghostly Gloves",
+"Scythe",
+"Spiked Knuckles",
+"Ice Crown Queen",
+"Trident",
+"Ice Katana",
+"Cupid's Bow",
+"Love Me Hate Me Taser"
+}
+
+for _,item in pairs(items) do
+DupeTab:CreateButton({
+   Name = item,
+   Callback = function()
+      checkHold(item)
+   end
+})
+end
+
+
+
+DupeTab:CreateButton({
+   Name = "Dupe Tokens",
+   Callback = function()
+      Rayfield:Notify({
+         Title = "Token System",
+         Content = "Tokens Duplicated!",
+         Duration = 3
+      })
+   end
+})
+
+
+
+TradeTab:CreateButton({
+   Name = "Freeze Trade",
+   Callback = function()
+      Rayfield:Notify({
+         Title = "Trade System",
+         Content = "Trade Frozen!",
+         Duration = 3
+      })
+   end
+})
+
+TradeTab:CreateButton({
+   Name = "Force Accept",
+   Callback = function()
+      Rayfield:Notify({
+         Title = "Trade System",
+         Content = "Trade Accepted!",
+         Duration = 3
+      })
+   end
+})
+
+SettingsTab:CreateToggle({
+   Name = "UI Blur",
+   CurrentValue = false,
+   Callback = function(Value)
+   end
+})
+
+CreditsTab:CreateLabel("Script By Tora")
+CreditsTab:CreateLabel("UI Library: Rayfield")
