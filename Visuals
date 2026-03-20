@@ -1,1 +1,169 @@
-local Players = game:GetService("Players") local RunService = game:GetService("RunService") local LocalPlayer = Players.LocalPlayer local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() local ReplicatedStorage = game:GetService("ReplicatedStorage") local Backpack = LocalPlayer:WaitForChild("Backpack") local Net = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net") local hitRemote1 = Net:WaitForChild("RE/BeachShovelHit") local hitRemote2 = Net:WaitForChild("RE/panHit") local hitRemote3 = Net:WaitForChild("RE/pinkStopSignalHit") local hitRemote4 = Net:WaitForChild("RE/baseballBatHit") local stompEvent = ReplicatedStorage:WaitForChild("STOMPEVENT") local function buyTool(toolName, buttonName) if Backpack:FindFirstChild(toolName) or Character:FindFirstChild(toolName) then return end local button = workspace:FindFirstChild(buttonName, true) if not button then return end Character:PivotTo(button.CFrame + Vector3.new(0, 2, 0)) local prompt = button:FindFirstChildWhichIsA("ProximityPrompt", true) if not prompt then return end while not (Backpack:FindFirstChild(toolName) or Character:FindFirstChild(toolName)) do fireproximityprompt(prompt) task.wait() end end buyTool("Pan", "Pan Buy button") buyTool("BeachShovel", "botonComprarShovel") local slayTarget = nil local isSlaying = false local function fireHits() pcall(function() hitRemote1:FireServer(1) end) pcall(function() hitRemote2:FireServer(1) end) pcall(function() hitRemote3:FireServer(1) end) pcall(function() hitRemote4:FireServer(1) end) end local function teleportToSky(character) local root = character:FindFirstChild("HumanoidRootPart") if root then root.CFrame = CFrame.new(0, 1000, 0) end end local function fireSlay() pcall(function() stompEvent:FireServer() end) end local function moveNearbyPlayers(localRoot) for _, player in ipairs(Players:GetPlayers()) do if player ~= LocalPlayer then local char = player.Character local humanoid = char and char:FindFirstChild("Humanoid") local root = char and char:FindFirstChild("HumanoidRootPart") if humanoid and (humanoid.Health ~= 1 or humanoid.Health ~= 2 or humanoid.Health ~= 3) and root then root.CanCollide = false root.Size = Vector3.new(20, 20, 20) root.CFrame = localRoot.CFrame * CFrame.new(0, 0, -10) end end end end task.spawn(function() while true do local foundTarget = nil for _, player in ipairs(Players:GetPlayers()) do if player ~= LocalPlayer then local char = player.Character local humanoid = char and char:FindFirstChild("Humanoid") local head = char and char:FindFirstChild("Head") if humanoid and (humanoid.Health == 1 or humanoid.Health == 2 or humanoid.Health == 3) and head then local yPos = head.Position.Y if yPos < 500 then foundTarget = player break end end end end slayTarget = foundTarget isSlaying = foundTarget ~= nil task.wait(1) end end) RunService.Heartbeat:Connect(function() local char = LocalPlayer.Character local root = char and char:FindFirstChild("HumanoidRootPart") if not char or not root then return end if isSlaying and slayTarget and slayTarget.Character then local targethead = slayTarget.Character:FindFirstChild("Head") if targethead then root.CFrame = CFrame.new(targethead.Position) * CFrame.new(0, 2.5, 0) fireSlay() end else fireHits() teleportToSky(char) moveNearbyPlayers(root) end end) for i = 1, 80 do pcall(function() ReplicatedStorage.Modules.Net["RF/SalonPunch"]:InvokeServer() end) end
+--// Load Rayfield
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Yoshidaa Hub | Slay GUI",
+    LoadingTitle = "Loading...",
+    LoadingSubtitle = "by Yoshidaa",
+    ConfigurationSaving = {
+        Enabled = false
+    }
+})
+
+local MainTab = Window:CreateTab("Main", 4483362458)
+
+--// Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Backpack = LocalPlayer:WaitForChild("Backpack")
+
+--// Remotes
+local Net = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net")
+local hitRemote1 = Net:WaitForChild("RE/BeachShovelHit")
+local hitRemote2 = Net:WaitForChild("RE/panHit")
+local hitRemote3 = Net:WaitForChild("RE/pinkStopSignalHit")
+local hitRemote4 = Net:WaitForChild("RE/baseballBatHit")
+local stompEvent = ReplicatedStorage:WaitForChild("STOMPEVENT")
+
+--// States
+local AutoSlay = false
+local AutoFarm = false
+local slayTarget = nil
+
+--// Functions
+local function buyTool(toolName, buttonName)
+    if Backpack:FindFirstChild(toolName) or Character:FindFirstChild(toolName) then return end
+    local button = workspace:FindFirstChild(buttonName, true)
+    if not button then return end
+
+    Character:PivotTo(button.CFrame + Vector3.new(0,2,0))
+    local prompt = button:FindFirstChildWhichIsA("ProximityPrompt", true)
+
+    if prompt then
+        repeat
+            fireproximityprompt(prompt)
+            task.wait()
+        until Backpack:FindFirstChild(toolName)
+    end
+end
+
+local function fireHits()
+    pcall(function() hitRemote1:FireServer(1) end)
+    pcall(function() hitRemote2:FireServer(1) end)
+    pcall(function() hitRemote3:FireServer(1) end)
+    pcall(function() hitRemote4:FireServer(1) end)
+end
+
+local function teleportToSky(char)
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if root then
+        root.CFrame = CFrame.new(0,1000,0)
+    end
+end
+
+local function fireSlay()
+    pcall(function()
+        stompEvent:FireServer()
+    end)
+end
+
+--// Target Finder
+task.spawn(function()
+    while true do
+        local found = nil
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local char = player.Character
+                local humanoid = char and char:FindFirstChild("Humanoid")
+                local head = char and char:FindFirstChild("Head")
+
+                if humanoid and (humanoid.Health == 1 or humanoid.Health == 2 or humanoid.Health == 3) and head then
+                    if head.Position.Y < 500 then
+                        found = player
+                        break
+                    end
+                end
+            end
+        end
+
+        slayTarget = found
+        task.wait(1)
+    end
+end)
+local function createESP(player)
+    if not player.Character then return end
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.fromRGB(255,0,0)
+    highlight.OutlineColor = Color3.fromRGB(255,255,255)
+    highlight.Parent = player.Character
+    ESPObjects[player] = highlight
+end
+
+
+--// Loop
+RunService.Heartbeat:Connect(function()
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not char or not root then return end
+
+    if AutoSlay and slayTarget and slayTarget.Character then
+        local head = slayTarget.Character:FindFirstChild("Head")
+        if head then
+            root.CFrame = CFrame.new(head.Position) * CFrame.new(0,2.5,0)
+            fireSlay()
+        end
+    end
+
+    if AutoFarm then
+        fireHits()
+        teleportToSky(char)
+    end
+end)
+
+--// Buttons / Toggles
+MainTab:CreateButton({
+    Name = "Buy Tools",
+    Callback = function()
+        buyTool("Pan", "Pan Buy button")
+        buyTool("BeachShovel", "botonComprarShovel")
+    end
+})
+
+MainTab:CreateToggle({
+    Name = "Auto Slay",
+    CurrentValue = false,
+    Callback = function(val)
+        AutoSlay = val
+    end
+})
+
+MainTab:CreateToggle({
+    Name = "Auto Farm",
+    CurrentValue = false,
+    Callback = function(val)
+        AutoFarm = val
+    end
+})
+
+MainTab:CreateToggle({
+    Name = "Esp",
+    CurrentValue = false,
+    Callback = function(val)
+        AutoFarm = val
+    end
+})
+--// Spam Punch
+MainTab:CreateButton({
+    Name = "Spam Punch x80",
+    Callback = function()
+        for i = 1, 80 do
+            pcall(function()
+                ReplicatedStorage.Modules.Net["RF/SalonPunch"]:InvokeServer()
+            end)
+        end
+    end
+})
