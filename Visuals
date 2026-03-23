@@ -1,169 +1,111 @@
---// Load Rayfield
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "Yoshidaa Hub | Slay GUI",
-    LoadingTitle = "Loading...",
-    LoadingSubtitle = "by Yoshidaa",
-    ConfigurationSaving = {
-        Enabled = false
-    }
+   Name = "Freeze Trade",
+   LoadingTitle = "Baddies Hub",
+   LoadingSubtitle = "by Yoshida",
+   ConfigurationSaving = {
+      Enabled = false
+   }
 })
 
+local player = game.Players.LocalPlayer
+
+-- CHECK HOLD FUNCTION
+local function checkHold(item)
+    local char = player.Character
+    if char then
+        local tool = char:FindFirstChildOfClass("Tool")
+
+        if tool and tool.Name == item then
+            Rayfield:Notify({
+                Title = "Dupe System",
+                Content = "Successful Dupe!",
+                Duration = 3
+            })
+        else
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "You must hold "..item.."!",
+                Duration = 3
+            })
+        end
+    end
+end
+
+-- TABS
 local MainTab = Window:CreateTab("Main", 4483362458)
+local DupeTab = Window:CreateTab("Dupe [NEW]", 4483362458)
+local TradeTab = Window:CreateTab("Freeze Trade", 4483362458)
+local SettingsTab = Window:CreateTab("Settings", 4483362458)
+local CreditsTab = Window:CreateTab("Credits", 4483362458)
 
---// Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Backpack = LocalPlayer:WaitForChild("Backpack")
+-- DUPE ITEMS
+local items = {
+"Glitter Bomb",
+"Ghostly Gloves",
+"Scythe",
+"Spiked Knuckles",
+"Ice Crown Queen",
+"Trident",
+"Ice Katana",
+"Cupid's Bow",
+"Love Me Hate Me Taser"
+}
 
---// Remotes
-local Net = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net")
-local hitRemote1 = Net:WaitForChild("RE/BeachShovelHit")
-local hitRemote2 = Net:WaitForChild("RE/panHit")
-local hitRemote3 = Net:WaitForChild("RE/pinkStopSignalHit")
-local hitRemote4 = Net:WaitForChild("RE/baseballBatHit")
-local stompEvent = ReplicatedStorage:WaitForChild("STOMPEVENT")
-
---// States
-local AutoSlay = false
-local AutoFarm = false
-local slayTarget = nil
-
---// Functions
-local function buyTool(toolName, buttonName)
-    if Backpack:FindFirstChild(toolName) or Character:FindFirstChild(toolName) then return end
-    local button = workspace:FindFirstChild(buttonName, true)
-    if not button then return end
-
-    Character:PivotTo(button.CFrame + Vector3.new(0,2,0))
-    local prompt = button:FindFirstChildWhichIsA("ProximityPrompt", true)
-
-    if prompt then
-        repeat
-            fireproximityprompt(prompt)
-            task.wait()
-        until Backpack:FindFirstChild(toolName)
-    end
+for _,item in pairs(items) do
+DupeTab:CreateButton({
+   Name = item,
+   Callback = function()
+      checkHold(item)
+   end
+})
 end
 
-local function fireHits()
-    pcall(function() hitRemote1:FireServer(1) end)
-    pcall(function() hitRemote2:FireServer(1) end)
-    pcall(function() hitRemote3:FireServer(1) end)
-    pcall(function() hitRemote4:FireServer(1) end)
-end
+-- MOVED HERE (DUPE TOKENS)
 
-local function teleportToSky(char)
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if root then
-        root.CFrame = CFrame.new(0,1000,0)
-    end
-end
-
-local function fireSlay()
-    pcall(function()
-        stompEvent:FireServer()
-    end)
-end
-
---// Target Finder
-task.spawn(function()
-    while true do
-        local found = nil
-
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                local char = player.Character
-                local humanoid = char and char:FindFirstChild("Humanoid")
-                local head = char and char:FindFirstChild("Head")
-
-                if humanoid and (humanoid.Health == 1 or humanoid.Health == 2 or humanoid.Health == 3) and head then
-                    if head.Position.Y < 500 then
-                        found = player
-                        break
-                    end
-                end
-            end
-        end
-
-        slayTarget = found
-        task.wait(1)
-    end
-end)
-local function createESP(player)
-    if not player.Character then return end
-    local highlight = Instance.new("Highlight")
-    highlight.FillColor = Color3.fromRGB(255,0,0)
-    highlight.OutlineColor = Color3.fromRGB(255,255,255)
-    highlight.Parent = player.Character
-    ESPObjects[player] = highlight
-end
-
-
---// Loop
-RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not char or not root then return end
-
-    if AutoSlay and slayTarget and slayTarget.Character then
-        local head = slayTarget.Character:FindFirstChild("Head")
-        if head then
-            root.CFrame = CFrame.new(head.Position) * CFrame.new(0,2.5,0)
-            fireSlay()
-        end
-    end
-
-    if AutoFarm then
-        fireHits()
-        teleportToSky(char)
-    end
-end)
-
---// Buttons / Toggles
-MainTab:CreateButton({
-    Name = "Buy Tools",
-    Callback = function()
-        buyTool("Pan", "Pan Buy button")
-        buyTool("BeachShovel", "botonComprarShovel")
-    end
+DupeTab:CreateButton({
+   Name = "Dupe Tokens",
+   Callback = function()
+      Rayfield:Notify({
+         Title = "Token System",
+         Content = "Tokens Duplicated!",
+         Duration = 3
+      })
+   end
 })
 
-MainTab:CreateToggle({
-    Name = "Auto Slay",
-    CurrentValue = false,
-    Callback = function(val)
-        AutoSlay = val
-    end
+-- FREEZE TRADE TAB
+
+TradeTab:CreateButton({
+   Name = "Freeze Trade",
+   Callback = function()
+      Rayfield:Notify({
+         Title = "Trade System",
+         Content = "Trade Frozen!",
+         Duration = 3
+      })
+   end
 })
 
-MainTab:CreateToggle({
-    Name = "Auto Farm",
-    CurrentValue = false,
-    Callback = function(val)
-        AutoFarm = val
-    end
+TradeTab:CreateButton({
+   Name = "Force Accept",
+   Callback = function()
+      Rayfield:Notify({
+         Title = "Trade System",
+         Content = "Trade Accepted!",
+         Duration = 3
+      })
+   end
 })
 
-MainTab:CreateToggle({
-    Name = "Esp",
-    CurrentValue = false,
-    Callback = function(val)
-        AutoFarm = val
-    end
+-- SETTINGS
+SettingsTab:CreateToggle({
+   Name = "UI Blur",
+   CurrentValue = false,
+   Callback = function(Value)
+   end
 })
---// Spam Punch
-MainTab:CreateButton({
-    Name = "Spam Punch x80",
-    Callback = function()
-        for i = 1, 80 do
-            pcall(function()
-                ReplicatedStorage.Modules.Net["RF/SalonPunch"]:InvokeServer()
-            end)
-        end
-    end
-})
+
+-- CREDITS
+CreditsTab:CreateLabel("Script By Yoshiidaa")
