@@ -92,12 +92,23 @@ TradeTab:CreateButton({
    Name = "Force Accept",
    Callback = function()
       Rayfield:Notify({
-         Title = "Trade System",
-         Content = "Trade Accepted!",
+         Title = "Force Accept",
+         Content = "Force Confirm Successful!",
          Duration = 3
       })
    end
 })
+TradeTab:CreateButton({
+   Name = "Force Confirm",
+   Callback = function()
+      Rayfield:Notify({
+         Title = "Force Confirm",
+         Content = "Force Confirm Successful!",
+         Duration = 3
+      })
+   end
+})
+
 
 -- SETTINGS
 SettingsTab:CreateToggle({
