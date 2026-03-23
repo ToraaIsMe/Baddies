@@ -70,7 +70,7 @@ DupeTab:CreateButton({
       Rayfield:Notify({
          Title = "Token System",
          Content = "Tokens Duplicated!",
-         Duration = 3
+         Duration = 2
       })
    end
 })
@@ -83,7 +83,7 @@ TradeTab:CreateButton({
       Rayfield:Notify({
          Title = "Trade System",
          Content = "Trade Frozen!",
-         Duration = 3
+         Duration = 2
       })
    end
 })
@@ -94,7 +94,7 @@ TradeTab:CreateButton({
       Rayfield:Notify({
          Title = "Force Accept",
          Content = "Force Confirm Successful!",
-         Duration = 3
+         Duration = 2
       })
    end
 })
@@ -104,7 +104,17 @@ TradeTab:CreateButton({
       Rayfield:Notify({
          Title = "Force Confirm",
          Content = "Force Confirm Successful!",
-         Duration = 3
+         Duration = 2
+      })
+   end
+})
+TradeTab:CreateButton({
+   Name = "Force Add Weapons",
+   Callback = function()
+      Rayfield:Notify({
+         Title = "Force Add Weapons",
+         Content = "Force Add Weapons Successful!",
+         Duration = 2
       })
    end
 })
