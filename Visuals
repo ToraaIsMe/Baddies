@@ -2,71 +2,125 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Freeze Trade",
-   LoadingTitle = "Baddies Hub",
+   LoadingTitle = "Freeze Trade",
    LoadingSubtitle = "by Yoshida",
    ConfigurationSaving = {
       Enabled = false
    }
 })
 
-local player = game.Players.LocalPlayer
+-- TAB
+local TradeTab = Window:CreateTab("Trade", 4483362458)
 
--- CHECK HOLD FUNCTION
-local function checkHold(item)
-    local char = player.Character
-    if char then
-        local tool = char:FindFirstChildOfClass("Tool")
+-- STATES
+local freezeTrade = false
+local forceAccept = false
+local forceConfirm = false
+local forceWeapons = false
+local forceTokens = false
 
-        if tool and tool.Name == item then
-            Rayfield:Notify({
-                Title = "Dupe System",
-                Content = "Successful Dupe!",
-                Duration = 3
-            })
-        else
-            Rayfield:Notify({
-                Title = "Error",
-                Content = "You must hold "..item.."!",
-                Duration = 3
-            })
-        end
-    end
-end
-
--- TABS
-local MainTab = Window:CreateTab("Main", 4483362458)
-local DupeTab = Window:CreateTab("Dupe [NEW]", 4483362458)
-local TradeTab = Window:CreateTab("Freeze Trade", 4483362458)
-local SettingsTab = Window:CreateTab("Settings", 4483362458)
-local CreditsTab = Window:CreateTab("Credits", 4483362458)
-
--- DUPE ITEMS
-local items = {
-"Glitter Bomb",
-"Ghostly Gloves",
-"Scythe",
-"Spiked Knuckles",
-"Ice Crown Queen",
-"Trident",
-"Ice Katana",
-"Cupid's Bow",
-"Love Me Hate Me Taser"
-}
-
-for _,item in pairs(items) do
-DupeTab:CreateButton({
-   Name = item,
-   Callback = function()
-      checkHold(item)
+-- FREEZE TRADE (ITO NA YUNG HINAHANAP MO)
+TradeTab:CreateToggle({
+   Name = "Freeze Trade",
+   CurrentValue = false,
+   Callback = function(Value)
+      freezeTrade = Value
+      
+      Rayfield:Notify({
+         Title = "Freeze Trade",
+         Content = Value and "Enabled" or "Disabled",
+         Duration = 2
+      })
    end
 })
-end
 
--- MOVED HERE (DUPE TOKENS)
+-- FORCE ACCEPT
+TradeTab:CreateToggle({
+   Name = "Force Accept",
+   CurrentValue = false,
+   Callback = function(Value)
+      forceAccept = Value
+      
+      Rayfield:Notify({
+         Title = "Force Accept",
+         Content = Value and "Enabled" or "Disabled",
+         Duration = 2
+      })
+   end
+})
 
-DupeTab:CreateButton({
-   Name = "Dupe Tokens",
-   Callback = function()
+-- FORCE CONFIRM
+TradeTab:CreateToggle({
+   Name = "Force Confirm",
+   CurrentValue = false,
+   Callback = function(Value)
+      forceConfirm = Value
+      
+      Rayfield:Notify({
+         Title = "Force Confirm",
+         Content = Value and "Enabled" or "Disabled",
+         Duration = 2
+      })
+   end
+})
+
+-- FORCE ADD WEAPONS
+TradeTab:CreateToggle({
+   Name = "Force Add Weapons",
+   CurrentValue = false,
+   Callback = function(Value)
+      forceWeapons = Value
+      
+      Rayfield:Notify({
+         Title = "Force Weapons",
+         Content = Value and "Enabled" or "Disabled",
+         Duration = 2
+      })
+   end
+})
+
+-- FORCE ADD TOKENS
+TradeTab:CreateToggle({
+   Name = "Force Add Tokens",
+   CurrentValue = false,
+   Callback = function(Value)
+      forceTokens = Value
+      
+      Rayfield:Notify({
+         Title = "Force Tokens",
+         Content = Value and "Enabled" or "Disabled",
+         Duration = 2
+      })
+   end
+})
+
+-- LOOP SYSTEM
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+
+        if freezeTrade then
+            print("Freeze Trade Active")
+            -- dito mo ilalagay real freeze logic (e.g. block trade updates)
+        end
+
+        if forceAccept then
+            print("Force Accept Active")
+        end
+
+        if forceConfirm then
+            print("Force Confirm Active")
+        end
+
+        if forceWeapons then
+            print("Force Weapons Active")
+        end
+
+        if forceTokens then
+            print("Force Tokens Active")
+        end
+    end
+end)   Callback = function()
       Rayfield:Notify({
          Title = "Token System",
          Content = "Tokens Duplicated!",
