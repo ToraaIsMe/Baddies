@@ -1,131 +1,201 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Freeze Trade",
-   LoadingTitle = "Baddies Hub",
-   LoadingSubtitle = "by Yoshida",
-   ConfigurationSaving = {
-      Enabled = false
-   }
+Name = "Freeze Trade",
+LoadingTitle = "Freeze Trade",
+LoadingSubtitle = "by Yoshida",
+ConfigurationSaving = {
+Enabled = false
+}
 })
-
-local player = game.Players.LocalPlayer
-
--- CHECK HOLD FUNCTION
-local function checkHold(item)
-    local char = player.Character
-    if char then
-        local tool = char:FindFirstChildOfClass("Tool")
-
-        if tool and tool.Name == item then
-            Rayfield:Notify({
-                Title = "Dupe System",
-                Content = "Successful Dupe!",
-                Duration = 3
-            })
-        else
-            Rayfield:Notify({
-                Title = "Error",
-                Content = "You must hold "..item.."!",
-                Duration = 3
-            })
-        end
-    end
-end
 
 -- TABS
-local MainTab = Window:CreateTab("Main", 4483362458)
-local DupeTab = Window:CreateTab("Dupe [NEW]", 4483362458)
-local TradeTab = Window:CreateTab("Freeze Trade", 4483362458)
-local SettingsTab = Window:CreateTab("Settings", 4483362458)
-local CreditsTab = Window:CreateTab("Credits", 4483362458)
+local TradeTab = Window:CreateTab("Trade", 4483362458)
+local SettingsTab = Window:CreateTab("Settings", 4483362459)
+local CreditsTab = Window:CreateTab("Credits", 4483362460)
 
--- DUPE ITEMS
-local items = {
-"Glitter Bomb",
-"Ghostly Gloves",
-"Scythe",
-"Spiked Knuckles",
-"Ice Crown Queen",
-"Trident",
-"Ice Katana",
-"Cupid's Bow",
-"Love Me Hate Me Taser"
-}
+-- STATES
+local freezeTrade = false
+local forceAccept = false
+local forceConfirm = false
+local forceWeapons = false
+local forceTokens = false
 
-for _,item in pairs(items) do
-DupeTab:CreateButton({
-   Name = item,
-   Callback = function()
-      checkHold(item)
-   end
+-- FREEZE TRADE TOGGLE
+TradeTab:CreateToggle({
+Name = "Freeze Trade",
+CurrentValue = false,
+Callback = function(Value)
+freezeTrade = Value
+
+Rayfield:Notify({  
+     Title = "Freeze Trade",  
+     Content = Value and "Enabled" or "Disabled",  
+     Duration = 2  
+  })
+
+end
 })
+
+-- FORCE ACCEPT TOGGLE
+TradeTab:CreateToggle({
+Name = "Force Accept",
+CurrentValue = false,
+Callback = function(Value)
+forceAccept = Value
+
+Rayfield:Notify({  
+     Title = "Force Accept",  
+     Content = Value and "Enabled" or "Disabled",  
+     Duration = 2  
+  })
+
+end
+})
+
+-- FORCE CONFIRM TOGGLE
+TradeTab:CreateToggle({
+Name = "Force Confirm",
+CurrentValue = false,
+Callback = function(Value)
+forceConfirm = Value
+
+Rayfield:Notify({  
+     Title = "Force Confirm",  
+     Content = Value and "Enabled" or "Disabled",  
+     Duration = 2  
+  })
+
+end
+})
+
+-- FORCE ADD WEAPONS TOGGLE
+TradeTab:CreateToggle({
+Name = "Force Add Weapons",
+CurrentValue = false,
+Callback = function(Value)
+forceWeapons = Value
+
+Rayfield:Notify({  
+     Title = "Force Weapons",  
+     Content = Value and "Enabled" or "Disabled",  
+     Duration = 2  
+  })
+
+end
+})
+
+-- FORCE ADD TOKENS TOGGLE
+TradeTab:CreateToggle({
+Name = "Force Add Tokens",
+CurrentValue = false,
+Callback = function(Value)
+forceTokens = Value
+
+Rayfield:Notify({  
+     Title = "Force Tokens",  
+     Content = Value and "Enabled" or "Disabled",  
+     Duration = 2  
+  })
+
+end
+})
+
+-- BUTTONS (for instant actions)
+TradeTab:CreateButton({
+Name = "Force Accept (Instant)",
+Callback = function()
+Rayfield:Notify({
+Title = "Force Accept",
+Content = "Force Accept Triggered!",
+Duration = 2
+})
+-- Add your force accept logic here
+end
+})
+
+TradeTab:CreateButton({
+Name = "Force Confirm (Instant)",
+Callback = function()
+Rayfield:Notify({
+Title = "Force Confirm",
+Content = "Force Confirm Triggered!",
+Duration = 2
+})
+-- Add your force confirm logic here
+end
+})
+
+TradeTab:CreateButton({
+Name = "Force Add Weapons (Instant)",
+Callback = function()
+Rayfield:Notify({
+Title = "Force Add Weapons",
+Content = "Force Add Weapons Triggered!",
+Duration = 2
+})
+-- Add your force add weapons logic here
+end
+})
+
+TradeTab:CreateButton({
+Name = "Force Add Tokens (Instant)",
+Callback = function()
+Rayfield:Notify({
+Title = "Force Tokens",
+Content = "Tokens Triggered!",
+Duration = 2
+})
+-- Add your token duplication logic here
+end
+})
+
+-- LOOP SYSTEM (for toggles that need constant checking)
+task.spawn(function()
+while true do
+task.wait(0.5)
+
+if freezeTrade then  
+        -- Add your freeze trade logic here (e.g., block trade updates)  
+        print("Freeze Trade Active")  
+    end  
+
+    if forceAccept then  
+        -- Add your force accept logic here  
+        print("Force Accept Active")  
+    end  
+
+    if forceConfirm then  
+        -- Add your force confirm logic here  
+        print("Force Confirm Active")  
+    end  
+
+    if forceWeapons then  
+        -- Add your force add weapons logic here  
+        print("Force Weapons Active")  
+    end  
+
+    if forceTokens then  
+        -- Add your force add tokens logic here  
+        print("Force Tokens Active")  
+    end  
 end
 
--- MOVED HERE (DUPE TOKENS)
-
-DupeTab:CreateButton({
-   Name = "Dupe Tokens",
-   Callback = function()
-      Rayfield:Notify({
-         Title = "Token System",
-         Content = "Tokens Duplicated!",
-         Duration = 2
-      })
-   end
-})
-
--- FREEZE TRADE TAB
-
-TradeTab:CreateButton({
-   Name = "Freeze Trade",
-   Callback = function()
-      Rayfield:Notify({
-         Title = "Trade System",
-         Content = "Trade Frozen!",
-         Duration = 2
-      })
-   end
-})
-
-TradeTab:CreateButton({
-   Name = "Force Accept",
-   Callback = function()
-      Rayfield:Notify({
-         Title = "Force Accept",
-         Content = "Force Confirm Successful!",
-         Duration = 2
-      })
-   end
-})
-TradeTab:CreateButton({
-   Name = "Force Confirm",
-   Callback = function()
-      Rayfield:Notify({
-         Title = "Force Confirm",
-         Content = "Force Confirm Successful!",
-         Duration = 2
-      })
-   end
-})
-TradeTab:CreateButton({
-   Name = "Force Add Weapons",
-   Callback = function()
-      Rayfield:Notify({
-         Title = "Force Add Weapons",
-         Content = "Force Add Weapons Successful!",
-         Duration = 2
-      })
-   end
-})
-
+end)
 
 -- SETTINGS
 SettingsTab:CreateToggle({
-   Name = "UI Blur",
-   CurrentValue = false,
-   Callback = function(Value)
-   end
+Name = "UI Blur",
+CurrentValue = false,
+Callback = function(Value)
+if Value then
+-- Add UI blur logic here
+print("UI Blur Enabled")
+else
+-- Remove UI blur logic here
+print("UI Blur Disabled")
+end
+end
 })
 
 -- CREDITS
