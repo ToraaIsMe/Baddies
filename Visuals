@@ -3,7 +3,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
 Name = "Freeze Trade",
 LoadingTitle = "Freeze Trade",
-LoadingSubtitle = "by Yoshida",
+LoadingSubtitle = "by Voids",
 ConfigurationSaving = {
 Enabled = false
 }
