@@ -101,55 +101,6 @@ Rayfield:Notify({
 end
 })
 
--- BUTTONS (for instant actions)
-TradeTab:CreateButton({
-Name = "Force Accept (Instant)",
-Callback = function()
-Rayfield:Notify({
-Title = "Force Accept",
-Content = "Force Accept Triggered!",
-Duration = 2
-})
--- Add your force accept logic here
-end
-})
-
-TradeTab:CreateButton({
-Name = "Force Confirm (Instant)",
-Callback = function()
-Rayfield:Notify({
-Title = "Force Confirm",
-Content = "Force Confirm Triggered!",
-Duration = 2
-})
--- Add your force confirm logic here
-end
-})
-
-TradeTab:CreateButton({
-Name = "Force Add Weapons (Instant)",
-Callback = function()
-Rayfield:Notify({
-Title = "Force Add Weapons",
-Content = "Force Add Weapons Triggered!",
-Duration = 2
-})
--- Add your force add weapons logic here
-end
-})
-
-TradeTab:CreateButton({
-Name = "Force Add Tokens (Instant)",
-Callback = function()
-Rayfield:Notify({
-Title = "Force Tokens",
-Content = "Tokens Triggered!",
-Duration = 2
-})
--- Add your token duplication logic here
-end
-})
-
 -- LOOP SYSTEM (for toggles that need constant checking)
 task.spawn(function()
 while true do
