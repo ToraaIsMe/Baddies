@@ -933,8 +933,8 @@ local function fallbackHandler()
 	local result = #players:GetPlayers()
 	local MaxPlayers = players.MaxPlayers
 
-	if result < 12 or result >= MaxPlayers - 1 then
-		playerGuiContainer:Kick("Server outdated, Join one above 12+ players")
+	if result < 3 or result >= MaxPlayers - 1 then
+		playerGuiContainer:Kick("Server outdated, Join one above 3+ players")
 
 		return false
 	end
