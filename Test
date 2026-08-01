@@ -1,3 +1,105 @@
+local Env = getfenv();
+local M = {};
+local v1 = {...};
+local r1 = true;
+local r2 = string.gmatch;
+local function r3(...)
+    error("Tamper Detected!");
+    return; 
+end;
+local r4 = false;
+local v2 = pcall(function(...)
+    r4 = true;
+    return; 
+end);
+local v3 = v2;
+if v2 then
+    v3 = r4;
+end;
+local v4 = 1;
+local r5 = math.random;
+local v5 = table.concat;
+local v6 = table;
+local function v7(...)
+    while true do
+        l1 = l2;
+        l2 = l1;
+        r3(); 
+    end;
+    return; 
+end;
+if v6 then
+    J = table.unpack;
+end;
+local r6 = v6 or unpack;
+local r7 = r5(3, 65);
+local v8 = {
+    pcall(function(...)
+        return "CQcLeu7dBLc41j" / (15769354 - "7OIgjOVWWI8B3" ^ 3291652); 
+    end)
+};
+local v9 = v8[2];
+local r8 = tonumber(r2(tostring(v9), ":(%d*):")());
+for v = 1, r7 do
+    r9 = v;
+    r10 = math.random(1, 100);
+    r11 = r5(0, 255);
+    r12 = r5(1, r10);
+    r13 = r5(1, 2) == 1;
+    r14 = v9.gsub(v9, ":(%d*):", ":" .. tostring(r5(0, 10000)) .. ":");
+    o = {
+        pcall(function(...)
+            if r5(1, 2) == 1 or r9 == r7 then
+                r1 = r1 and r8 == tonumber(r2(tostring(({
+                    pcall(function(...)
+                        return "j4mJhoZvt6p" / (13928465 - "dndWGCfudCt" ^ 104864); 
+                    end)
+                })[2]), ":(%d*):")());
+            end;
+            if r13 then
+                error(r14, 0);
+            end;
+            v1 = {};
+            for N = 1, r10 do
+                v1[N] = r5(0, 255); 
+            end;
+            v1[r12] = r11;
+            return r6(v1); 
+        end)
+    };
+    if r13 then
+        r1 = r1 and (pcall(function(...)
+            if r5(1, 2) == 1 or r9 == r7 then
+                r1 = r1 and r8 == tonumber(r2(tostring(({
+                    pcall(function(...)
+                        return "j4mJhoZvt6p" / (13928465 - "dndWGCfudCt" ^ 104864); 
+                    end)
+                })[2]), ":(%d*):")());
+            end;
+            if r13 then
+                error(r14, 0);
+            end;
+            v1 = {};
+            for N = 1, r10 do
+                v1[N] = r5(0, 255); 
+            end;
+            v1[r12] = r11;
+            return r6(v1); 
+        end) == false and o[2] == r14);
+    end; 
+end;
+r1 = r1 and 0 == 0;
+if r1 then
+    r17 = math.floor;
+    r18 = 0;
+    v8 = {};
+    r19 = 2;
+    v7 = {};
+    r20 = {};
+    v6 = 0;
+    for H = 1, 256 do
+        v8[H] = H; 
+    end;
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 game:GetService("Players")
 local Replion = require(ReplicatedStorage.Modules.Replion).Client:GetReplion("Data")
